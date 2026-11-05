@@ -1,0 +1,1445 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.509838012188,
+          39.165139830024
+        ]
+      },
+      "properties": {
+        "id": 9510974,
+        "name": "Emergency Phone",
+        "description": "<p>North of 3rd & Union Apts</p><p><b>Location: </b>North of 3rd & Union Apts</p>",
+        "level": [
+          0
+        ],
+        "reference": 72,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.522556531264,
+          39.163264384437
+        ]
+      },
+      "properties": {
+        "id": 9510975,
+        "name": "Emergency Phone",
+        "description": "<p>SW Corner of Henderson Parking Garage</p><p><b>Location: </b>SW Corner of Henderson Parking Garage</p>",
+        "level": [
+          0
+        ],
+        "reference": 73,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.513529187339,
+          39.16537132488
+        ]
+      },
+      "properties": {
+        "id": 9510976,
+        "name": "Emergency Phone",
+        "description": "<p>NW of Forest Quad</p><p><b>Location: </b>NW of Forest Quad</p>",
+        "level": [
+          0
+        ],
+        "reference": 74,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.520077387086,
+          39.174390993037
+        ]
+      },
+      "properties": {
+        "id": 9510977,
+        "name": "Emergency Phone",
+        "description": "<p>NE of Switching Center</p><p><b>Location: </b>NE of Switching Center</p>",
+        "level": [
+          0
+        ],
+        "reference": 75,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.527206123781,
+          39.165301811902
+        ]
+      },
+      "properties": {
+        "id": 9510978,
+        "name": "Emergency Phone",
+        "description": "<p>Parking Area West of Law Bldg</p><p><b>Location: </b>Parking Area West of Law Bldg</p>",
+        "level": [
+          0
+        ],
+        "reference": 76,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.493766523586,
+          39.176248725373
+        ]
+      },
+      "properties": {
+        "id": 9510979,
+        "name": "Emergency Phone",
+        "description": "<p>South Side of SErvice Bldg</p><p><b>Location: </b>South Side of SErvice Bldg</p>",
+        "level": [
+          0
+        ],
+        "reference": 78,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.493667957511,
+          39.177027920905
+        ]
+      },
+      "properties": {
+        "id": 9510980,
+        "name": "Emergency Phone",
+        "description": "<p>North Side of SErvice Bldg</p><p><b>Location: </b>North Side of SErvice Bldg</p>",
+        "level": [
+          0
+        ],
+        "reference": 79,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.520391838272,
+          39.170408222799
+        ]
+      },
+      "properties": {
+        "id": 9510981,
+        "name": "Emergency Phone",
+        "description": "<p>NE of Spea</p><p><b>Location: </b>NE of Spea</p>",
+        "level": [
+          0
+        ],
+        "reference": 80,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.528169341778,
+          39.16763267009
+        ]
+      },
+      "properties": {
+        "id": 9510982,
+        "name": "Emergency Phone",
+        "description": "<p>SE of Poplars Parking Garage</p><p><b>Location: </b>SE of Poplars Parking Garage</p>",
+        "level": [
+          0
+        ],
+        "reference": 82,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.519612800217,
+          39.172868127457
+        ]
+      },
+      "properties": {
+        "id": 9510983,
+        "name": "Emergency Phone",
+        "description": "<p>Fee Lane Parking Garage 1St Floor</p><p><b>Location: </b>Fee Lane Parking Garage 1st Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 83,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.499396857111,
+          39.172357869725
+        ]
+      },
+      "properties": {
+        "id": 9510984,
+        "name": "Emergency Phone",
+        "description": "<p>East of Innovation Center</p><p><b>Location: </b>East of Innovation Center</p>",
+        "level": [
+          0
+        ],
+        "reference": 84,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.500731033747,
+          39.175167255499
+        ]
+      },
+      "properties": {
+        "id": 9510985,
+        "name": "Emergency Phone",
+        "description": "<p>Parking Area North of Data Center</p><p><b>Location: </b>Parking Area North of Data Center</p>",
+        "level": [
+          0
+        ],
+        "reference": 85,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.501753668349,
+          39.174220449373
+        ]
+      },
+      "properties": {
+        "id": 9510986,
+        "name": "Emergency Phone",
+        "description": "<p>West of Data Center</p><p><b>Location: </b>West of Data Center</p>",
+        "level": [
+          0
+        ],
+        "reference": 86,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.524557721178,
+          39.163333298461
+        ]
+      },
+      "properties": {
+        "id": 9510987,
+        "name": "Emergency Phone",
+        "description": "<p>Parking Area NW of Optometry</p><p><b>Location: </b>Parking Area NW of Optometry</p>",
+        "level": [
+          0
+        ],
+        "reference": 87,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.51710819894,
+          39.167977259464
+        ]
+      },
+      "properties": {
+        "id": 9510988,
+        "name": "Emergency Phone",
+        "description": "<p>SE of Auditorium</p><p><b>Location: </b>SE of Auditorium</p>",
+        "level": [
+          0
+        ],
+        "reference": 88,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.514412989245,
+          39.167384945098
+        ]
+      },
+      "properties": {
+        "id": 9510989,
+        "name": "Emergency Phone",
+        "description": "<p>East Side of East Parking Garage 1St Floor</p><p><b>Location: </b>East Side of East Parking Garage 1st Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 89,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.512405510014,
+          39.172031282172
+        ]
+      },
+      "properties": {
+        "id": 9510990,
+        "name": "Emergency Phone",
+        "description": "<p>10Th And Sunrise Parking Lot</p><p><b>Location: </b>10th And Sunrise Parking Lot</p>",
+        "level": [
+          0
+        ],
+        "reference": 90,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.49763475131,
+          39.175403391321
+        ]
+      },
+      "properties": {
+        "id": 9510991,
+        "name": "Emergency Phone",
+        "description": "<p>North Parking For Aux Library</p><p><b>Location: </b>North Parking For Aux Library</p>",
+        "level": [
+          0
+        ],
+        "reference": 91,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.513543043988,
+          39.174097807048
+        ]
+      },
+      "properties": {
+        "id": 9510992,
+        "name": "Emergency Phone",
+        "description": "<p>NW of Sports Rec Center</p><p><b>Location: </b>NW of Sports Rec Center</p>",
+        "level": [
+          0
+        ],
+        "reference": 92,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.519279128735,
+          39.165828505294
+        ]
+      },
+      "properties": {
+        "id": 9510993,
+        "name": "Emergency Phone",
+        "description": "<p>NW of Sycamore Hall</p><p><b>Location: </b>NW of Sycamore Hall</p>",
+        "level": [
+          0
+        ],
+        "reference": 93,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.510514586716,
+          39.170834233876
+        ]
+      },
+      "properties": {
+        "id": 9510994,
+        "name": "Emergency Phone",
+        "description": "<p>NE of Birch Hall</p><p><b>Location: </b>NE of Birch Hall</p>",
+        "level": [
+          0
+        ],
+        "reference": 94,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.510570911128,
+          39.168951866432
+        ]
+      },
+      "properties": {
+        "id": 9510995,
+        "name": "Emergency Phone",
+        "description": "<p>North of Beech Hall</p><p><b>Location: </b>North of Beech Hall</p>",
+        "level": [
+          0
+        ],
+        "reference": 95,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.511718456884,
+          39.168881099566
+        ]
+      },
+      "properties": {
+        "id": 9510996,
+        "name": "Emergency Phone",
+        "description": "<p>West of Beech Hall</p><p><b>Location: </b>West of Beech Hall</p>",
+        "level": [
+          0
+        ],
+        "reference": 96,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.50773385836,
+          39.170499920634
+        ]
+      },
+      "properties": {
+        "id": 9510997,
+        "name": "Emergency Phone",
+        "description": "<p>Eigenmann South Parking Lot</p><p><b>Location: </b>Eigenmann South Parking Lot</p>",
+        "level": [
+          0
+        ],
+        "reference": 97,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.495978862166,
+          39.17382674964
+        ]
+      },
+      "properties": {
+        "id": 9510998,
+        "name": "Emergency Phone",
+        "description": "<p>North Side of Motor Pool</p><p><b>Location: </b>North Side of Motor Pool</p>",
+        "level": [
+          0
+        ],
+        "reference": 98,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.501139957612,
+          39.17267917651
+        ]
+      },
+      "properties": {
+        "id": 9510999,
+        "name": "Emergency Phone",
+        "description": "<p>NE of Cib (10Th & Bypass)</p><p><b>Location: </b>NE of Cib (10th & Bypass)</p>",
+        "level": [
+          0
+        ],
+        "reference": 99,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.526568929756,
+          39.16381346147
+        ]
+      },
+      "properties": {
+        "id": 9511000,
+        "name": "Emergency Phone",
+        "description": "<p>NW Corner of Henderson Parking Garage 1St Floor</p><p><b>Location: </b>NW Corner of Henderson Parking Garage 1st Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 100,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.522905231856,
+          39.164969359901
+        ]
+      },
+      "properties": {
+        "id": 9511001,
+        "name": "Emergency Phone",
+        "description": "<p>NE of Rawles Hall</p><p><b>Location: </b>NE of Rawles Hall</p>",
+        "level": [
+          0
+        ],
+        "reference": 102,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.52722217564,
+          39.166809946794
+        ]
+      },
+      "properties": {
+        "id": 9511002,
+        "name": "Emergency Phone",
+        "description": "<p>Parking Area West of Franklin Hall</p><p><b>Location: </b>Parking Area West of Franklin Hall</p>",
+        "level": [
+          0
+        ],
+        "reference": 104,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.509510975258,
+          39.164697373959
+        ]
+      },
+      "properties": {
+        "id": 9511003,
+        "name": "Emergency Phone",
+        "description": "<p>East of 3rd & Union Apts</p><p><b>Location: </b>East of 3rd & Union Apts</p>",
+        "level": [
+          0
+        ],
+        "reference": 105,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.512425689524,
+          39.16587086
+        ]
+      },
+      "properties": {
+        "id": 9511004,
+        "name": "Emergency Phone",
+        "description": "<p>West of Rose Ave Hall</p><p><b>Location: </b>West of Rose Ave Hall</p>",
+        "level": [
+          0
+        ],
+        "reference": 106,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.511619980257,
+          39.166086852034
+        ]
+      },
+      "properties": {
+        "id": 9511005,
+        "name": "Emergency Phone",
+        "description": "<p>North Courtyard Rosae Ave Hall</p><p><b>Location: </b>North Courtyard Rosae Ave Hall</p>",
+        "level": [
+          0
+        ],
+        "reference": 107,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.510845657226,
+          39.164937610894
+        ]
+      },
+      "properties": {
+        "id": 9511006,
+        "name": "Emergency Phone",
+        "description": "<p>NW of 3Rd And Union Apts</p><p><b>Location: </b>NW of 3rd And Union Apts</p>",
+        "level": [
+          0
+        ],
+        "reference": 108,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.515133484286,
+          39.165333581894
+        ]
+      },
+      "properties": {
+        "id": 9511007,
+        "name": "Emergency Phone",
+        "description": "<p>South of Read Hall</p><p><b>Location: </b>South of Read Hall</p>",
+        "level": [
+          0
+        ],
+        "reference": 110,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.522171571418,
+          39.165435659792
+        ]
+      },
+      "properties": {
+        "id": 9511008,
+        "name": "Emergency Phone",
+        "description": "<p>North of Simon Hall</p><p><b>Location: </b>North of Simon Hall</p>",
+        "level": [
+          0
+        ],
+        "reference": 111,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.517083432686,
+          39.170153845085
+        ]
+      },
+      "properties": {
+        "id": 9511009,
+        "name": "Emergency Phone",
+        "description": "<p>East Side Gisb</p><p><b>Location: </b>East Side Gisb</p>",
+        "level": [
+          0
+        ],
+        "reference": 112,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.523397640273,
+          39.17302595538
+        ]
+      },
+      "properties": {
+        "id": 9511010,
+        "name": "Emergency Phone",
+        "description": "<p>West Side of Luddy Hall</p><p><b>Location: </b>West Side of Luddy Hall</p>",
+        "level": [
+          0
+        ],
+        "reference": 113,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.52228917911,
+          39.173855619329
+        ]
+      },
+      "properties": {
+        "id": 9511011,
+        "name": "Emergency Phone",
+        "description": "<p>West Wall of Forrest Avenue 1St Floor</p><p><b>Location: </b>West Wall of Forrest Avenue 1st Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 114,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.517941075562,
+          39.173155469914
+        ]
+      },
+      "properties": {
+        "id": 9511012,
+        "name": "Emergency Phone",
+        "description": "<p>Business/spea Parking Lot</p><p><b>Location: </b>Business/spea Parking Lot</p>",
+        "level": [
+          0
+        ],
+        "reference": 116,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.523409453174,
+          39.178727060219
+        ]
+      },
+      "properties": {
+        "id": 9511013,
+        "name": "Emergency Phone",
+        "description": "<p>West Side Marching Hundred Hall</p><p><b>Location: </b>West Side Marching Hundred Hall</p>",
+        "level": [
+          0
+        ],
+        "reference": 117,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.51552020848,
+          39.16744253781
+        ]
+      },
+      "properties": {
+        "id": 9511014,
+        "name": "Emergency Phone",
+        "description": "<p>West Side of East Parking Garage 1St Floor</p><p><b>Location: </b>West Side of East Parking Garage 1st Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 133,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.526082434721,
+          39.163290169612
+        ]
+      },
+      "properties": {
+        "id": 9511015,
+        "name": "Emergency Phone",
+        "description": "<p>SE Corner of Henderson Parking Garage 1St Floor</p><p><b>Location: </b>SE Corner of Henderson Parking Garage 1st Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 137,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.519365566689,
+          39.180504171089
+        ]
+      },
+      "properties": {
+        "id": 9511016,
+        "name": "Emergency Phone",
+        "description": "<p>NE of Wilkinson Hall</p><p><b>Location: </b>NE of Wilkinson Hall</p>",
+        "level": [
+          0
+        ],
+        "reference": 142,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.524432749538,
+          39.164955022442
+        ]
+      },
+      "properties": {
+        "id": 9511017,
+        "name": "Emergency Phone",
+        "description": "<p>NE Swain Hall</p><p><b>Location: </b>NE Swain Hall</p>",
+        "level": [
+          0
+        ],
+        "reference": 542,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.510485257552,
+          39.183997579677
+        ]
+      },
+      "properties": {
+        "id": 9511018,
+        "name": "Emergency Phone",
+        "description": "<p>George Thomas Clubhouse</p><p><b>Location: </b>George thomas Clubhouse</p>",
+        "level": [
+          0
+        ],
+        "reference": 543,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.519090055557,
+          39.164856216643
+        ]
+      },
+      "properties": {
+        "id": 9511019,
+        "name": "Emergency Phone",
+        "description": "<p>East Side of Memorial Hall</p><p><b>Location: </b>East Side of Memorial Hall</p>",
+        "level": [
+          0
+        ],
+        "reference": 545,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.527286525636,
+          39.171064441247
+        ]
+      },
+      "properties": {
+        "id": 9511020,
+        "name": "Emergency Phone",
+        "description": "<p>NE of Mccalla</p><p><b>Location: </b>NE of Mccalla</p>",
+        "level": [
+          0
+        ],
+        "reference": 945,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.522616695211,
+          39.17837410375
+        ]
+      },
+      "properties": {
+        "id": 9511021,
+        "name": "Emergency Phone",
+        "description": "<p>East Side Marching Hundred Hall</p><p><b>Location: </b>East Side Marching Hundred Hall</p>",
+        "level": [
+          0
+        ],
+        "reference": 1345,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.519612800217,
+          39.172868127457
+        ]
+      },
+      "properties": {
+        "id": 9511022,
+        "name": "Emergency Phone",
+        "description": "<p>Fee Lane Parking Garage 2Nd Floor</p><p><b>Location: </b>Fee Lane Parking Garage 2nd Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 1745,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.519612800217,
+          39.172868127457
+        ]
+      },
+      "properties": {
+        "id": 9511023,
+        "name": "Emergency Phone",
+        "description": "<p>Fee Lane Parking Garage 3Rd Floor</p><p><b>Location: </b>Fee Lane Parking Garage 3rd Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 1746,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.519612800217,
+          39.172868127457
+        ]
+      },
+      "properties": {
+        "id": 9511024,
+        "name": "Emergency Phone",
+        "description": "<p>Fee Lane Parking Garage 4Th Floor</p><p><b>Location: </b>Fee Lane Parking Garage 4th Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 1747,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.519612800217,
+          39.172868127457
+        ]
+      },
+      "properties": {
+        "id": 9511025,
+        "name": "Emergency Phone",
+        "description": "<p>Fee Lane Parking Garage 5Th Floor</p><p><b>Location: </b>Fee Lane Parking Garage 5th Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 1748,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.519612800217,
+          39.172868127457
+        ]
+      },
+      "properties": {
+        "id": 9511026,
+        "name": "Emergency Phone",
+        "description": "<p>Fee Lane Parking Garage 6Th Floor</p><p><b>Location: </b>Fee Lane Parking Garage 6th Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 1749,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.522500228905,
+          39.172980190791
+        ]
+      },
+      "properties": {
+        "id": 9511027,
+        "name": "Emergency Phone",
+        "description": "<p>East Side of Luddy Hall</p><p><b>Location: </b>East Side of Luddy Hall</p>",
+        "level": [
+          0
+        ],
+        "reference": 1750,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.52228917911,
+          39.173855619329
+        ]
+      },
+      "properties": {
+        "id": 9511028,
+        "name": "Emergency Phone",
+        "description": "<p>West Wall of Forrest Avenue 2Nd Floor</p><p><b>Location: </b>West Wall of Forrest Avenue 2nd Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 1751,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.52228917911,
+          39.173855619329
+        ]
+      },
+      "properties": {
+        "id": 9511029,
+        "name": "Emergency Phone",
+        "description": "<p>West Wall of Forrest Avenue 3Rd Floor</p><p><b>Location: </b>West Wall of Forrest Avenue 3rd Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 1752,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.52228917911,
+          39.173855619329
+        ]
+      },
+      "properties": {
+        "id": 9511030,
+        "name": "Emergency Phone",
+        "description": "<p>West Wall of Forrest Avenue 4Th Floor</p><p><b>Location: </b>West Wall of Forrest Avenue 4th Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 1753,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.52130980714,
+          39.173674276006
+        ]
+      },
+      "properties": {
+        "id": 9511031,
+        "name": "Emergency Phone",
+        "description": "<p>SE of Forrest Avenue 1St Floor</p><p><b>Location: </b>SE of Forrest Avenue 1st Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 1754,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.52130980714,
+          39.173674276006
+        ]
+      },
+      "properties": {
+        "id": 9511032,
+        "name": "Emergency Phone",
+        "description": "<p>SE of Forrest Avenue 2Nd Floor</p><p><b>Location: </b>SE of Forrest Avenue 2nd Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 1755,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.52130980714,
+          39.173674276006
+        ]
+      },
+      "properties": {
+        "id": 9511033,
+        "name": "Emergency Phone",
+        "description": "<p>SE of Forrest Avenue 3Rd Floor</p><p><b>Location: </b>SE of Forrest Avenue 3rd Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 1756,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.52130980714,
+          39.173674276006
+        ]
+      },
+      "properties": {
+        "id": 9511034,
+        "name": "Emergency Phone",
+        "description": "<p>SE of Forrest Avenue 4Th Floor</p><p><b>Location: </b>SE of Forrest Avenue 4th Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 1757,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.526568929756,
+          39.16381346147
+        ]
+      },
+      "properties": {
+        "id": 9511035,
+        "name": "Emergency Phone",
+        "description": "<p>NW Corner of Henderson Parking Garage 2Nd Floor</p><p><b>Location: </b>NW Corner of Henderson Parking Garage 2nd Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 1758,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.526568929756,
+          39.16381346147
+        ]
+      },
+      "properties": {
+        "id": 9511036,
+        "name": "Emergency Phone",
+        "description": "<p>NW Corner of Henderson Parking Garage 3Rd Floor</p><p><b>Location: </b>NW Corner of Henderson Parking Garage 3rd Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 1759,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.526568929756,
+          39.16381346147
+        ]
+      },
+      "properties": {
+        "id": 9511037,
+        "name": "Emergency Phone",
+        "description": "<p>NW Corner of Henderson Parking Garage 4Th Floor</p><p><b>Location: </b>NW Corner of Henderson Parking Garage 4th Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 1760,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.526082434721,
+          39.163290169612
+        ]
+      },
+      "properties": {
+        "id": 9511038,
+        "name": "Emergency Phone",
+        "description": "<p>SE Corner of Henderson Parking Garage 2Nd Floor</p><p><b>Location: </b>SE Corner of Henderson Parking Garage 2nd Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 1761,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.526082434721,
+          39.163290169612
+        ]
+      },
+      "properties": {
+        "id": 9511039,
+        "name": "Emergency Phone",
+        "description": "<p>SE Corner of Henderson Parking Garage 3Rd Floor</p><p><b>Location: </b>SE Corner of Henderson Parking Garage 3rd Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 1762,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.526082434721,
+          39.163290169612
+        ]
+      },
+      "properties": {
+        "id": 9511040,
+        "name": "Emergency Phone",
+        "description": "<p>SE Corner of Henderson Parking Garage 4Th Floor</p><p><b>Location: </b>SE Corner of Henderson Parking Garage 4th Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 1763,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.5206757768,
+          39.165488764727
+        ]
+      },
+      "properties": {
+        "id": 9511041,
+        "name": "Emergency Phone",
+        "description": "<p>West of Goodbody Hall</p><p><b>Location: </b>West of Goodbody Hall</p>",
+        "level": [
+          0
+        ],
+        "reference": 1764,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.51552020848,
+          39.16744253781
+        ]
+      },
+      "properties": {
+        "id": 9511042,
+        "name": "Emergency Phone",
+        "description": "<p>West Side of East Parking Garage 2Nd Floor</p><p><b>Location: </b>West Side of East Parking Garage 2nd Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 1765,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.514412989245,
+          39.167384945098
+        ]
+      },
+      "properties": {
+        "id": 9511043,
+        "name": "Emergency Phone",
+        "description": "<p>East Side of East Parking Garage 2Nd Floor</p><p><b>Location: </b>East Side of East Parking Garage 2nd Floor</p>",
+        "level": [
+          0
+        ],
+        "reference": 1766,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.519432210062,
+          39.178962430738
+        ]
+      },
+      "properties": {
+        "id": 9511044,
+        "name": "Emergency Phone",
+        "description": "<p>North Side of Briscoe Hall</p><p><b>Location: </b>North Side of Briscoe</p>",
+        "level": [
+          0
+        ],
+        "reference": 103,
+        "mapId": 951
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.517390268147,
+          39.171871221424
+        ]
+      },
+      "properties": {
+        "id": 9511045,
+        "name": "Emergency Phone",
+        "description": "<p>SE of SPEA Building</p>",
+        "level": [
+          0
+        ],
+        "reference": 1767,
+        "mapId": 951
+      }
+    }
+  ]
+}
