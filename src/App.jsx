@@ -2,6 +2,7 @@ import { useState } from 'react'
 import './App.css'
 import './Intro.css'
 import AuthPage from './pages/AuthPage'
+import MapTestPage from './pages/MapTestPage'
 import ProfileHome from './pages/ProfileHome'
 import WelcomePage from './pages/WelcomePage'
 
@@ -58,6 +59,7 @@ function App() {
     setErrors({})
   }
 
+  if (window.location.pathname === '/map') return <MapTestPage />
   if (profile) return <ProfileHome profile={profile} onLogout={handleLogout} />
   if (!showAuth) return <WelcomePage onGetStarted={() => openAuth('create')} onSignIn={() => openAuth('signin')} />
 

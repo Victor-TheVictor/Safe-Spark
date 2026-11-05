@@ -1,0 +1,68 @@
+
+.safety-map-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 300px;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.safety-map {
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.blue-light-phone-icon {
+  border: 0;
+  background: transparent;
+}
+
+.blue-light-phone-marker {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #1769aa;
+  box-shadow: 0 2px 7px rgba(20, 39, 58, 0.38);
+}
+
+.blue-light-phone-marker svg {
+  width: 19px;
+  height: 19px;
+  fill: #fff;
+}
+
+.blue-light-phone-description {
+  margin: 5px 0 0;
+}
+
+.blue-light-phone-facility + .blue-light-phone-facility {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid #d9e0e7;
+}
+
+.safety-map-status {
+  position: absolute;
+  z-index: 1000;
+  top: 12px;
+  left: 12px;
+  max-width: min(320px, calc(100% - 24px));
+  padding: 9px 12px;
+  border: 1px solid rgba(25, 42, 58, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #243444;
+  font-size: 14px;
+  line-height: 1.4;
+  box-shadow: 0 1px 5px rgba(25, 42, 58, 0.16);
+}
+
+.safety-map-error {
+  border-color: #e2b6ae;
+  color: #8d2d20;
+}
