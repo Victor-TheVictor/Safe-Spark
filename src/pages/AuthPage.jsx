@@ -15,14 +15,14 @@ export default function AuthPage({ mode, onModeChange, onBack, onSubmit, name, s
         <div className="auth-content">
           <p className="eyebrow"><span className="eyebrow-mark" /> Your campus companion</p>
           <h1>{isSignIn ? 'Welcome back.' : 'Let’s get you started.'}</h1>
-          <p className="auth-description">{isSignIn ? 'Enter your details to continue to SafeSpark.' : 'Add your name and phone number to make SafeSpark yours.'}</p>
+          <p className="auth-description">{isSignIn ? 'Enter the phone number saved with your local profile.' : 'Add your name and phone number to make SafeSpark yours.'}</p>
 
           <form className="profile-form" onSubmit={onSubmit} noValidate>
-            <div className="form-field">
+            {!isSignIn && <div className="form-field">
               <label htmlFor="profile-name">Your name</label>
               <input id="profile-name" name="name" autoComplete="name" placeholder="e.g. Alex Johnson" value={name} onChange={(event) => setName(event.target.value)} required maxLength={80} aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? 'name-error' : undefined} />
               {errors.name && <p className="field-error" id="name-error" role="alert">{errors.name}</p>}
-            </div>
+            </div>}
 
             <div className="form-field">
               <label htmlFor="profile-phone">Phone number</label>
@@ -40,10 +40,11 @@ export default function AuthPage({ mode, onModeChange, onBack, onSubmit, name, s
               {errors.phone && <p className="field-error" id="phone-error" role="alert">{errors.phone}</p>}
             </div>
 
+            {errors.form && <p className="field-error" role="alert">{errors.form}</p>}
             <button className="primary-action form-submit" type="submit">{isSignIn ? 'Continue' : 'Create my profile'} <span aria-hidden="true">→</span></button>
           </form>
 
-          <p className="profile-note" id="profile-note">Your profile is saved on this device. Phone numbers aren’t verified in this demo.</p>
+          <p className="profile-note" id="profile-note">{isSignIn ? 'Sign-in only works on this device. Phone numbers are not verified.' : 'Your profile is saved on this device. Phone numbers are not verified.'}</p>
           <p className="mode-switch">{isSignIn ? 'New to SafeSpark?' : 'Already have a profile?'} <button type="button" onClick={() => onModeChange(isSignIn ? 'create' : 'signin')}>{isSignIn ? 'Get started' : 'Sign in'}</button></p>
         </div>
 
