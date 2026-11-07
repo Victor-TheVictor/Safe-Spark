@@ -7,7 +7,7 @@ async function readError(response) {
   }
 }
 
-export async function streamSparkyReply(messages, { signal, onDelta }) {
+export async function streamSparkyReply(messages, { signal, onDelta } = {}) {
   const response = await fetch('/api/sparky/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -15,6 +15,12 @@ export async function streamSparkyReply(messages, { signal, onDelta }) {
     signal,
   })
   if (!response.ok) throw new Error(await readError(response))
+  if (response.headers.get('Content-Type')?.includes('application/json')) {
+    const payload = await response.json()
+    if (payload.type === 'app_action' && payload.action && typeof payload.action.screen === 'string') return payload
+    if (payload.type === 'contact_action' && payload.action && typeof payload.action.contactName === 'string') return payload
+    throw new Error('Sparky returned an invalid app action.')
+  }
   if (!response.body) throw new Error('Streaming is not available in this browser.')
 
   const reader = response.body.getReader()

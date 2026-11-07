@@ -26,7 +26,9 @@ npm run preview
 - `/` — home, SOS call/text options, Blue Light map preview, nearest facility
 - `/contacts` — emergency contacts, call/text shortcuts, Safe Walk timer
 - `/map` — full Leaflet map and Google Maps walking directions
-- `/companion` — Sparky AI text and Realtime voice companion
+- `/sparky/chat` — independent Sparky text-chat page
+- `/sparky/voice` — independent Realtime voice page
+- `/companion` — legacy route alias that opens Sparky text chat
 - `/crime-log` — IU log snapshot and live Bloomington Calls for Service feed
 - `/safety-gear` — product images and manufacturer links
 - `/profile` — local profile and Safe Walk notification permission
@@ -45,9 +47,9 @@ Vercel is configured to serve the Vite entry point for app routes through `verce
 - Name and phone profiles, contacts, primary contact choice, and Safe Walk timers are stored in this browser only. There is no cloud account, SMS verification, password recovery, or cross-device sync.
 - SOS options open the phone dialer or a prefilled SMS for the user to review. SafeSpark does not automatically dispatch an alert or contact campus police.
 - Safe Walk reminders are browser notifications and require permission. Keep the app tab open; this is not a background safety monitor and it does not message the selected contact.
-- Sparky stores conversation history and voice preferences in browser local storage, separated by a random local profile key. This survives refreshes on the same browser, but does not sync to another device and is not tied to verified identity. Deleting the local profile removes its Sparky history.
-- Sparky's text, suggestions, completion, and Realtime voice need the Cloudflare Pages Functions and `OPENAI_API_KEY` secret. The companion is mounted once for signed-in app routes; conversation history and preferences remain in this browser's local storage. Voice uses a short-lived Realtime credential, WebRTC, and live audio; raw microphone recordings are not stored by SafeSpark. The optional personal safety phrase is checked only against the user's transcription during an active voice session; no wake-word or background microphone monitoring runs.
-- Emergency phrase handling shows a local alert and offers the native dialer or a prefilled SMS draft for a saved contact. The user must place the call or review and send the message; SafeSpark does not automatically dispatch alerts, verify SMS delivery, or contact 911. Location is included only when the app already has a current, user-permitted position.
+- Sparky stores conversation history, local conversation IDs, voice preferences, and safety-phrase event status in browser local storage under a local profile key. Text and voice share that history across routes and refreshes on the same browser; they do not sync to another device and are not tied to verified identity. Deleting the local profile removes these records.
+- Text chat streams from the OpenAI Responses API. The model may request allowlisted navigation or a saved-contact action; the app validates routes/contact matches, and calls or texts require a user click to open the native phone app. Voice uses the OpenAI Realtime API with `gpt-realtime-2.1`, short-lived credentials, WebRTC, server VAD, interruption support, and live audio. Raw microphone recordings are not stored by SafeSpark. The optional safety phrase is checked only against the user's transcription during an active voice session; no wake-word or background microphone monitoring runs.
+- Emergency phrase handling records a minimal event timestamp and action status on this device, then offers the native dialer or a prefilled SMS draft for a saved contact. The user must place the call or review and send the message; SafeSpark does not automatically dispatch alerts, verify SMS delivery, or contact 911. Location is included only when the app already has a current, user-permitted position.
 - Walking directions open Google Maps with the current GPS origin, the verified nearest Blue Light destination, and walking mode.
 
 ## Deploy
@@ -68,6 +70,6 @@ For local AI requests, create a root `.dev.vars` file (already ignored by Git) c
 
 After deployment, open `/api/sparky/health`. It should return `{"ok":true,"service":"sparky","configured":true,...}`. If `configured` is false, add the secret to the correct Cloudflare environment and redeploy. Keep HTTPS enabled for browser location and microphone permissions.
 
-The API applies same-origin checks and per-isolate request throttling. The current local profile is not server authentication, and isolate memory is not a global rate limiter; configure a Cloudflare edge rate-limiting rule for `/api/sparky/*` before public launch to limit cost abuse.
+The API applies same-origin checks and per-isolate request throttling. The current local profile is not server authentication, and isolate memory is not a global rate limiter. There is no configured database or verified account system in this project; do not store sensitive conversations or contacts in a server database until identity and access control are added. Configure a Cloudflare edge rate-limiting rule for `/api/sparky/*` before public launch to limit cost abuse.
 
 Vercel remains configured for the existing static app, but it does not provide the Cloudflare Pages Functions in this project. Deploy to Cloudflare Pages for the integrated AI API. Review the crime snapshot date, emergency copy, manufacturer links, and browser permission behavior before public release.

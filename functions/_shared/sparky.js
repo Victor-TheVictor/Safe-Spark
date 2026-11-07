@@ -1,6 +1,7 @@
 import { SPARKY_SYSTEM_PROMPT } from './sparkyPrompt.js'
 import { retrieveSparkyKnowledge } from './sparkyKnowledge.js'
 import { classifySparkySafetyIntent } from './sparkySafety.js'
+import { getSparkyAppAction, SPARKY_APP_TOOLS, SPARKY_REALTIME_TOOLS } from '../../shared/sparkyActions.js'
 
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses'
 const OPENAI_REALTIME_SECRET_URL = 'https://api.openai.com/v1/realtime/client_secrets'
@@ -146,6 +147,44 @@ export async function handleChat(context) {
   }
 
   try {
+    const latestUserText = messages.at(-1).content
+    const explicitDestination = /\b(open|show|go to|take me to|navigate to)\b/i.test(latestUserText)
+    const asksNearestBlueLight = /\b(where is|find|nearest|closest)\b.{0,48}\b(blue light|emergency phone)/i.test(latestUserText)
+    const mayRequestContactAction = /\b(call|text|message)\b/i.test(latestUserText)
+    const mayRequestAppAction = (explicitDestination && /\b(home|safety map|map|crime|report|safety gear|contacts|profile|voice|chat|companion|blue light|emergency phone)\b/i.test(latestUserText)) || asksNearestBlueLight || mayRequestContactAction
+    if (mayRequestAppAction) {
+      const decisionResponse = await fetch(OPENAI_RESPONSES_URL, {
+        method: 'POST',
+        headers: openAiHeaders(env.OPENAI_API_KEY),
+        body: JSON.stringify({
+          model: env.OPENAI_TEXT_MODEL || 'gpt-6-luna',
+          instructions: `${knowledgeInstructions(latestUserText)}\n\nUse navigate_to_safe_spark_screen only when the user explicitly asks to open or view a SafeSpark screen. For questions about finding a Blue Light Phone, open the Safety Map. Use request_emergency_contact_action only when the user clearly asks to call, text, or message a contact. The app will match the name against contacts stored on this device and show a confirmation; do not claim that a call or message was sent. Do not navigate merely because a page is mentioned in passing.`,
+          input: messages,
+          tools: SPARKY_APP_TOOLS,
+          tool_choice: 'auto',
+          max_output_tokens: 120,
+          store: false,
+        }),
+      })
+      if (!decisionResponse.ok) return providerFailure(decisionResponse.status)
+      const decision = await parseOpenAiJson(decisionResponse)
+      const functionCall = decision?.output?.find((item) => item.type === 'function_call' && ['navigate_to_safe_spark_screen', 'request_emergency_contact_action'].includes(item.name))
+      if (functionCall) {
+        let argumentsValue
+        try { argumentsValue = JSON.parse(functionCall.arguments) } catch { return json({ error: 'Sparky could not validate that app action. Please try again.' }, 502) }
+        if (functionCall.name === 'navigate_to_safe_spark_screen') {
+          const action = getSparkyAppAction(argumentsValue.screen)
+          if (!action) return json({ error: 'That SafeSpark screen is not available.' }, 400)
+          return json({ type: 'app_action', action: { screen: action.screen, path: action.path, label: action.label } })
+        }
+        const contactName = typeof argumentsValue.contact_name === 'string' ? argumentsValue.contact_name.trim().slice(0, 80) : ''
+        const actionType = argumentsValue.action
+        const message = typeof argumentsValue.message === 'string' ? argumentsValue.message.trim().slice(0, 500) : null
+        if (!contactName || !['call', 'text'].includes(actionType) || (actionType === 'text' && !message)) return json({ error: 'Sparky could not validate that contact action.' }, 400)
+        return json({ type: 'contact_action', action: { contactName, action: actionType, message: actionType === 'text' ? message : null } })
+      }
+    }
+
     const upstream = await fetch(OPENAI_RESPONSES_URL, {
       method: 'POST',
       headers: openAiHeaders(env.OPENAI_API_KEY),
@@ -274,12 +313,14 @@ export async function handleRealtimeSession(context) {
         expires_after: { anchor: 'created_at', seconds: 90 },
         session: {
           type: 'realtime',
-          model: env.OPENAI_REALTIME_MODEL || 'gpt-realtime-2.1-mini',
+          model: env.OPENAI_REALTIME_MODEL || 'gpt-realtime-2.1',
           instructions: knowledgeInstructions(latestUserQuery),
+          tools: SPARKY_REALTIME_TOOLS,
+          tool_choice: 'auto',
           audio: {
             input: {
               transcription: { model: 'gpt-realtime-whisper', language: 'en' },
-              turn_detection: { type: 'semantic_vad', create_response: true, interrupt_response: true },
+              turn_detection: { type: 'server_vad', create_response: true, interrupt_response: true },
               noise_reduction: { type: 'near_field' },
             },
             output: { voice: env.SPARKY_VOICE || 'marin' },
@@ -287,14 +328,22 @@ export async function handleRealtimeSession(context) {
         },
       }),
     })
-    if (!response.ok) return providerFailure(response.status)
+    if (!response.ok) {
+      let diagnostic = {}
+      try {
+        const error = await response.clone().json()
+        diagnostic = { code: error?.error?.code, param: error?.error?.param }
+      } catch { /* Keep provider details out of the client response. */ }
+      console.warn('Sparky Realtime configuration rejected by provider', { status: response.status, ...diagnostic })
+      return providerFailure(response.status)
+    }
     const payload = await parseOpenAiJson(response)
     const clientSecret = payload?.value || payload?.client_secret?.value
     if (!clientSecret) return providerFailure()
     return json({
       client_secret: clientSecret,
       expires_at: payload.expires_at || payload.client_secret?.expires_at || null,
-      model: payload.session?.model || env.OPENAI_REALTIME_MODEL || 'gpt-realtime-2.1-mini',
+      model: payload.session?.model || env.OPENAI_REALTIME_MODEL || 'gpt-realtime-2.1',
     })
   } catch {
     return providerFailure()

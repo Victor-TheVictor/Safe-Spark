@@ -70,6 +70,35 @@ test('chat forwards streaming output from the Responses API', async () => {
   assert.equal(await response.text(), streamBody)
 })
 
+test('chat lets the model select an allowlisted SafeSpark navigation tool', async () => {
+  globalThis.fetch = async (_url, options) => {
+    const body = JSON.parse(options.body)
+    assert.equal(body.stream, undefined)
+    assert.ok(body.tools.some((tool) => tool.name === 'navigate_to_safe_spark_screen'))
+    return Response.json({ output: [{ type: 'function_call', name: 'navigate_to_safe_spark_screen', arguments: '{"screen":"safety_map"}' }] })
+  }
+  const response = await handleChat(context('chat', { messages: [{ role: 'user', content: 'Please open the safety map.' }] }))
+  assert.equal(response.status, 200)
+  assert.deepEqual(await response.json(), { type: 'app_action', action: { screen: 'safety_map', path: '/map', label: 'Safety Map' } })
+})
+
+test('chat rejects a model tool call outside the SafeSpark route allowlist', async () => {
+  globalThis.fetch = async () => Response.json({ output: [{ type: 'function_call', name: 'navigate_to_safe_spark_screen', arguments: '{"screen":"admin"}' }] })
+  const response = await handleChat(context('chat', { messages: [{ role: 'user', content: 'Open profile.' }] }))
+  assert.equal(response.status, 400)
+  assert.match((await response.json()).error, /not available/)
+})
+
+test('chat prepares a contact action for in-app confirmation without exposing contact data to the server', async () => {
+  globalThis.fetch = async (_url, options) => {
+    const body = JSON.parse(options.body)
+    assert.ok(body.tools.some((tool) => tool.name === 'request_emergency_contact_action'))
+    return Response.json({ output: [{ type: 'function_call', name: 'request_emergency_contact_action', arguments: '{"contact_name":"Mom","action":"text","message":"I am safe."}' }] })
+  }
+  const response = await handleChat(context('chat', { messages: [{ role: 'user', content: 'Text my mom that I am safe.' }] }))
+  assert.deepEqual(await response.json(), { type: 'contact_action', action: { contactName: 'Mom', action: 'text', message: 'I am safe.' } })
+})
+
 test('suggestions use the latest context and return short reply options', async () => {
   globalThis.fetch = async () => Response.json({ output_text: '{"suggestions":["Can you help plan my route?","Where are the phones?","Can I text my friend?"]}' })
   const response = await handleSuggestions(context('suggestions', {
@@ -96,6 +125,10 @@ test('Realtime endpoint returns only a short-lived credential and a hashed safet
     assert.match(String(url), /realtime\/client_secrets$/)
     const body = JSON.parse(options.body)
     assert.equal(body.expires_after.seconds, 90)
+    assert.equal(body.session.model, 'gpt-realtime-2.1')
+    assert.ok(body.session.tools.some((tool) => tool.name === 'navigate_to_safe_spark_screen'))
+    assert.equal(body.session.audio.input.turn_detection.type, 'server_vad')
+    assert.equal(body.session.tools[0].strict, undefined)
     assert.doesNotMatch(body.session.instructions, /Recent conversation for continuity/)
     assert.match(options.headers['OpenAI-Safety-Identifier'], /^[a-f0-9]{64}$/)
     return Response.json({ value: 'temporary-client-secret', expires_at: 1234 })

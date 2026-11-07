@@ -18,7 +18,7 @@ const PROFILE_KEY = 'safespark-profile'
 
 function AuthenticatedAppShell({ profile, currentPath, navigateTo, handleLogout, handleForgetProfile }) {
   const { userPosition } = useLocationTracking()
-  const knownPaths = ['/', '/map', '/contacts', '/companion', '/crime-log', '/safety-gear', '/profile']
+  const knownPaths = ['/', '/map', '/contacts', '/companion', '/sparky/chat', '/sparky/voice', '/crime-log', '/safety-gear', '/profile']
   return (
     <>
       <SafeWalkNotificationMonitor />
@@ -26,7 +26,7 @@ function AuthenticatedAppShell({ profile, currentPath, navigateTo, handleLogout,
         <div className="safe-app-screen">
           {currentPath === '/' ? <ProfileHome profile={profile} onLogout={handleLogout} onOpenMap={() => navigateTo('/map')} onNavigate={navigateTo} hideBottomNav /> : null}
           {currentPath === '/map' ? <MapTestPage onBack={() => navigateTo('/')} /> : null}
-          {currentPath !== '/' && currentPath !== '/map' && currentPath !== '/companion' && knownPaths.includes(currentPath) ? <FeaturePage path={currentPath} profile={profile} onNavigate={navigateTo} onLogout={handleLogout} onForgetProfile={handleForgetProfile} /> : null}
+          {currentPath !== '/' && currentPath !== '/map' && currentPath !== '/companion' && currentPath !== '/sparky/chat' && currentPath !== '/sparky/voice' && knownPaths.includes(currentPath) ? <FeaturePage path={currentPath} profile={profile} onNavigate={navigateTo} onLogout={handleLogout} onForgetProfile={handleForgetProfile} /> : null}
           {!knownPaths.includes(currentPath) ? <main className="feature-page"><h1>Page not found</h1><p>That SafeSpark screen doesn’t exist.</p><button type="button" onClick={() => navigateTo('/')}>Go to Home</button></main> : null}
         </div>
         <nav className="app-bottom-nav" aria-label="Main navigation">
@@ -34,10 +34,10 @@ function AuthenticatedAppShell({ profile, currentPath, navigateTo, handleLogout,
             { path: '/', label: 'Home', Icon: House },
             { path: '/contacts', label: 'Emergency', Icon: UsersRound },
             { path: '/map', label: 'Map', Icon: MapPinned },
-            { path: '/companion', label: 'AI Companion', image: '/assets/brand/sparky-mascot.png' },
+            { path: '/sparky/chat', label: 'AI Companion', image: '/assets/brand/sparky-mascot.png' },
             { path: '/crime-log', label: 'Crime Log', Icon: ShieldAlert },
           ].map(({ path, label, Icon, image }) => (
-            <button key={path} type="button" className={currentPath === path ? 'is-active' : ''} aria-label={label} aria-current={currentPath === path ? 'page' : undefined} title={label} onClick={() => navigateTo(path)}>
+            <button key={path} type="button" className={currentPath === path || (path === '/sparky/chat' && currentPath === '/sparky/voice') ? 'is-active' : ''} aria-label={label} aria-current={currentPath === path || (path === '/sparky/chat' && currentPath === '/sparky/voice') ? 'page' : undefined} title={label} onClick={() => navigateTo(path)}>
               {image ? <img className="app-nav-mascot" src={image} alt="" aria-hidden="true" /> : <Icon size={21} aria-hidden="true" />}
               <span className="visually-hidden">{label}</span>
             </button>
@@ -79,8 +79,9 @@ function App() {
   }, [])
 
   function navigateTo(path) {
-    window.history.pushState({}, '', path)
-    setCurrentPath(window.location.pathname)
+    const nextPath = path === '/companion' ? '/sparky/chat' : path
+    window.history.pushState({}, '', nextPath)
+    setCurrentPath(nextPath)
   }
 
   function openAuth(mode) {
@@ -146,7 +147,7 @@ function App() {
     }
     try {
       for (const key of Object.keys(localStorage)) {
-        if (key.startsWith('safespark-sparky-v1:')) localStorage.removeItem(key)
+        if (key.startsWith('safespark-sparky-v1:') || key.startsWith('safespark-sparky-events-v1:')) localStorage.removeItem(key)
       }
     } catch { /* Continue account reset even if browser storage cannot be enumerated. */ }
     try { sessionStorage.removeItem('safespark-location-session') } catch { /* Location state resets when provider unmounts. */ }

@@ -22,3 +22,25 @@ test('streamSparkyReply emits deltas from CRLF-delimited server events', async (
     globalThis.fetch = previousFetch
   }
 })
+
+test('streamSparkyReply returns a validated model-selected app action', async () => {
+  const previousFetch = globalThis.fetch
+  globalThis.fetch = async () => Response.json({ type: 'app_action', action: { screen: 'safety_map', path: '/map', label: 'Safety Map' } })
+  try {
+    const result = await streamSparkyReply([{ role: 'user', content: 'Open the map' }])
+    assert.deepEqual(result, { type: 'app_action', action: { screen: 'safety_map', path: '/map', label: 'Safety Map' } })
+  } finally {
+    globalThis.fetch = previousFetch
+  }
+})
+
+test('streamSparkyReply returns a contact action for an explicit user confirmation step', async () => {
+  const previousFetch = globalThis.fetch
+  globalThis.fetch = async () => Response.json({ type: 'contact_action', action: { contactName: 'Mom', action: 'text', message: 'I am safe.' } })
+  try {
+    const result = await streamSparkyReply([{ role: 'user', content: 'Text my mom that I am safe.' }])
+    assert.deepEqual(result, { type: 'contact_action', action: { contactName: 'Mom', action: 'text', message: 'I am safe.' } })
+  } finally {
+    globalThis.fetch = previousFetch
+  }
+})

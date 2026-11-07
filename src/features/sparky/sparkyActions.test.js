@@ -8,5 +8,5 @@ test('only allowlisted, explicit navigation intents resolve', () => {
   assert.equal(resolveSparkyNavigationAction('emergency contacts')?.path, '/contacts')
   assert.equal(resolveSparkyNavigationAction('/admin'), null)
   assert.equal(resolveSparkyNavigationAction(null), null)
-  assert.deepEqual(SPARKY_APP_ACTIONS.map(({ path }) => path), ['/', '/map', '/crime-log', '/safety-gear', '/contacts', '/profile'])
+  assert.deepEqual(SPARKY_APP_ACTIONS.map(({ path }) => path), ['/', '/map', '/crime-log', '/safety-gear', '/contacts', '/profile', '/sparky/chat', '/sparky/voice'])
 })
