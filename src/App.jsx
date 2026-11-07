@@ -6,17 +6,57 @@ import MapTestPage from './pages/MapTestPage'
 import ProfileHome from './pages/ProfileHome'
 import WelcomePage from './pages/WelcomePage'
 import { LocationTrackingProvider } from './features/nearest-blue-light/LocationTrackingProvider'
+import { useLocationTracking } from './features/nearest-blue-light/LocationTrackingContext'
+import SparkyCompanion from './features/sparky/SparkyCompanion'
 import FeaturePage from './pages/FeaturePage'
 import { CONTACTS_KEY, PRIMARY_CONTACT_KEY, SAFE_WALK_KEY } from './features/emergency-contacts/contactStore'
 import SafeWalkNotificationMonitor from './features/emergency-contacts/SafeWalkNotificationMonitor'
-import { House, UsersRound, Sparkles, ShieldAlert, MapPinned } from 'lucide-react'
+import { House, UsersRound, ShieldAlert, MapPinned } from 'lucide-react'
 import './pages/FeaturePage.css'
 
 const PROFILE_KEY = 'safespark-profile'
 
+function AuthenticatedAppShell({ profile, currentPath, navigateTo, handleLogout, handleForgetProfile }) {
+  const { userPosition } = useLocationTracking()
+  const knownPaths = ['/', '/map', '/contacts', '/companion', '/crime-log', '/safety-gear', '/profile']
+  return (
+    <>
+      <SafeWalkNotificationMonitor />
+      <div className="safe-app-shell">
+        <div className="safe-app-screen">
+          {currentPath === '/' ? <ProfileHome profile={profile} onLogout={handleLogout} onOpenMap={() => navigateTo('/map')} onNavigate={navigateTo} hideBottomNav /> : null}
+          {currentPath === '/map' ? <MapTestPage onBack={() => navigateTo('/')} /> : null}
+          {currentPath !== '/' && currentPath !== '/map' && currentPath !== '/companion' && knownPaths.includes(currentPath) ? <FeaturePage path={currentPath} profile={profile} onNavigate={navigateTo} onLogout={handleLogout} onForgetProfile={handleForgetProfile} /> : null}
+          {!knownPaths.includes(currentPath) ? <main className="feature-page"><h1>Page not found</h1><p>That SafeSpark screen doesn’t exist.</p><button type="button" onClick={() => navigateTo('/')}>Go to Home</button></main> : null}
+        </div>
+        <nav className="app-bottom-nav" aria-label="Main navigation">
+          {[
+            { path: '/', label: 'Home', Icon: House },
+            { path: '/contacts', label: 'Emergency', Icon: UsersRound },
+            { path: '/map', label: 'Map', Icon: MapPinned },
+            { path: '/companion', label: 'AI Companion', image: '/assets/brand/sparky-mascot.png' },
+            { path: '/crime-log', label: 'Crime Log', Icon: ShieldAlert },
+          ].map(({ path, label, Icon, image }) => (
+            <button key={path} type="button" className={currentPath === path ? 'is-active' : ''} aria-label={label} aria-current={currentPath === path ? 'page' : undefined} title={label} onClick={() => navigateTo(path)}>
+              {image ? <img className="app-nav-mascot" src={image} alt="" aria-hidden="true" /> : <Icon size={21} aria-hidden="true" />}
+              <span className="visually-hidden">{label}</span>
+            </button>
+          ))}
+        </nav>
+      </div>
+      <SparkyCompanion profile={profile} path={currentPath} onNavigate={navigateTo} userPosition={userPosition} />
+    </>
+  )
+}
+
 function readProfile() {
   try {
-    return JSON.parse(localStorage.getItem(PROFILE_KEY))
+    const profile = JSON.parse(localStorage.getItem(PROFILE_KEY))
+    if (!profile || typeof profile !== 'object') return null
+    if (typeof profile.id === 'string' && profile.id) return profile
+    const migratedProfile = { ...profile, id: globalThis.crypto?.randomUUID?.() || `profile-${Date.now()}-${Math.random().toString(36).slice(2)}` }
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(migratedProfile))
+    return migratedProfile
   } catch {
     return null
   }
@@ -71,7 +111,11 @@ function App() {
       setErrors(nextErrors)
       return
     }
-    const nextProfile = { name: cleanName, phone: `${countryCode} ${cleanPhone}` }
+    const nextProfile = {
+      id: globalThis.crypto?.randomUUID?.() || `profile-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      name: cleanName,
+      phone: `${countryCode} ${cleanPhone}`,
+    }
     try {
       localStorage.setItem(PROFILE_KEY, JSON.stringify(nextProfile))
     } catch {
@@ -100,6 +144,11 @@ function App() {
     for (const key of [PROFILE_KEY, CONTACTS_KEY, PRIMARY_CONTACT_KEY, SAFE_WALK_KEY, 'safespark-walk-notifications', 'safespark-preferences']) {
       try { localStorage.removeItem(key) } catch { /* Continue clearing any remaining local records. */ }
     }
+    try {
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith('safespark-sparky-v1:')) localStorage.removeItem(key)
+      }
+    } catch { /* Continue account reset even if browser storage cannot be enumerated. */ }
     try { sessionStorage.removeItem('safespark-location-session') } catch { /* Location state resets when provider unmounts. */ }
     setProfile(null)
     setName('')
@@ -109,23 +158,10 @@ function App() {
     setErrors({})
   }
 
-  const knownPaths = ['/', '/map', '/contacts', '/companion', '/crime-log', '/safety-gear', '/profile']
-
   if (profile) {
     return (
       <LocationTrackingProvider>
-        <SafeWalkNotificationMonitor />
-        <div className="safe-app-shell">
-          <div className="safe-app-screen">
-            {currentPath === '/' ? <ProfileHome profile={profile} onLogout={handleLogout} onOpenMap={() => navigateTo('/map')} onNavigate={navigateTo} hideBottomNav /> : null}
-            {currentPath === '/map' ? <MapTestPage onBack={() => navigateTo('/')} /> : null}
-            {currentPath !== '/' && currentPath !== '/map' && knownPaths.includes(currentPath) ? <FeaturePage path={currentPath} profile={profile} onNavigate={navigateTo} onLogout={handleLogout} onForgetProfile={handleForgetProfile} /> : null}
-            {!knownPaths.includes(currentPath) ? <main className="feature-page"><h1>Page not found</h1><p>That SafeSpark screen doesn’t exist.</p><button type="button" onClick={() => navigateTo('/')}>Go to Home</button></main> : null}
-          </div>
-          <nav className="app-bottom-nav" aria-label="Main navigation">
-            {[[ '/', 'Home', House ],[ '/contacts', 'Emergency', UsersRound ],[ '/map', 'Map', MapPinned ],[ '/companion', 'AI Companion', Sparkles ],[ '/crime-log', 'Crime Log', ShieldAlert ]].map(([path,label,Icon]) => <button key={path} type="button" className={currentPath === path ? 'is-active' : ''} aria-current={currentPath === path ? 'page' : undefined} onClick={() => navigateTo(path)}><Icon size={19} aria-hidden="true"/><span>{label}</span></button>)}
-          </nav>
-        </div>
+        <AuthenticatedAppShell profile={profile} currentPath={currentPath} navigateTo={navigateTo} handleLogout={handleLogout} handleForgetProfile={handleForgetProfile} />
       </LocationTrackingProvider>
     )
   }
