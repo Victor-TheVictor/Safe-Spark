@@ -184,13 +184,13 @@
 .sparky-widget .sparky-composer { position:static; margin:0 6px 8px; }
 .sparky-widget .sparky-safety-footer { padding-bottom:3px; }
 .sparky-widget .sparky-settings-panel { margin:8px 0; padding:12px; }
-.sparky-floating-mascot { position:fixed; z-index:1251; right:max(18px,env(safe-area-inset-right)); bottom:calc(82px + env(safe-area-inset-bottom)); display:grid; width:62px; height:62px; place-items:center; padding:3px; border:1px solid #f0d7c3; border-radius:50%; background:#fff8f1; box-shadow:0 7px 24px #25170f24; cursor:pointer; }
+.sparky-floating-mascot { position:fixed; z-index:1251; right:max(18px,env(safe-area-inset-right)); bottom:calc(82px + env(safe-area-inset-bottom)); display:grid; width:62px; height:62px; place-items:center; padding:3px; border:1px solid #f0d7c3; border-radius:50%; background:#fff8f1; box-shadow:0 7px 24px #25170f24; cursor:grab; user-select:none; -webkit-user-select:none; }
 .sparky-floating-mascot img { width:100%; height:100%; object-fit:contain; }
 .sparky-floating-mascot:hover { transform:translateY(-2px); }
 .sparky-floating-status { position:absolute; top:3px; right:3px; width:11px; height:11px; border:2px solid white; border-radius:50%; background:#408c5d; }
 .sparky-floating-mascot.is-emergency { border-color:#b02e16; box-shadow:0 0 0 4px #b02e1624,0 7px 24px #25170f24; }
 .sparky-floating-mascot { touch-action:none; }
-.sparky-floating-mascot.is-dragging { cursor:grabbing; transition:none; }
+.sparky-floating-mascot.is-dragging { cursor:grabbing; transition:none; transform:none; }
 .sparky-action-shortcuts { display:flex; flex-wrap:wrap; gap:6px; margin: auto 0 8px; }
 .sparky-action-shortcuts button { min-height:44px; padding:5px 9px; border:1px solid #ead9ca; border-radius:999px; background:#fffdf9; color:#6c432a; font-size:11px; cursor:pointer; }
 .sparky-action-shortcuts button span { color:#bf4b0d; }

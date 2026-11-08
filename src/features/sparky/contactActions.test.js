@@ -1,6 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { resolveContactActionFromRequest, resolveSavedEmergencyContact } from './contactActions.js'
+import {
+  isCurrentLocationRequest,
+  isExplicitContactActionRequest,
+  resolveContactActionFromRequest,
+  resolveSavedEmergencyContact,
+} from './contactActions.js'
 
 const contacts = [
   { id: '1', name: 'Preview Tester', phone: '+1 812 555 0123' },
@@ -10,6 +15,27 @@ const contacts = [
 test('matches only a single saved contact actually named in the user request', () => {
   const result = resolveContactActionFromRequest({}, 'Please text Preview Tester that I am safe.', contacts)
   assert.deepEqual(result, { contact_name: 'Preview Tester', action: 'text', message: 'I am safe.' })
+})
+
+test('parses direct send requests even if AI service is unavailable', () => {
+  assert.equal(isExplicitContactActionRequest('Text Preview Tester: I am safe.'), true)
+  assert.deepEqual(resolveContactActionFromRequest({}, 'Text Preview Tester: I am safe.', contacts), {
+    contact_name: 'Preview Tester',
+    action: 'text',
+    message: 'I am safe.',
+  })
+  assert.equal(isExplicitContactActionRequest('请给Mom发短信说我安全。'), true)
+  assert.deepEqual(resolveContactActionFromRequest({}, '请给Mom发短信说我安全。', [{ ...contacts[0], name: 'Mom' }]), {
+    contact_name: 'Mom',
+    action: 'text',
+    message: '我安全。',
+  })
+})
+
+test('recognizes location questions in English and Chinese for local handling', () => {
+  assert.equal(isCurrentLocationRequest('Where am I right now?'), true)
+  assert.equal(isCurrentLocationRequest('我现在在哪？'), true)
+  assert.equal(isCurrentLocationRequest('How does GPS work?'), false)
 })
 
 test('does not choose between multiple saved contacts named in the request', () => {

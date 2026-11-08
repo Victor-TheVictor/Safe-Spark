@@ -44,6 +44,16 @@ export const SPARKY_REALTIME_TOOLS = Object.freeze(SPARKY_APP_TOOLS.map((tool) =
   Object.fromEntries(Object.entries(tool).filter(([key]) => key !== 'strict'))
 )))
 
+export const SPARKY_VOICE_TOOLS = Object.freeze([
+  ...SPARKY_REALTIME_TOOLS,
+  {
+    type: 'function',
+    name: 'get_current_location',
+    description: 'Use only when the user explicitly asks where they are, asks for their current coordinates, or asks for the nearest Blue Light Phone. The app reads permissioned GPS locally and returns the result to this active voice conversation. Never call proactively or claim a location is known if GPS is unavailable.',
+    parameters: { type: 'object', properties: {}, required: [], additionalProperties: false },
+  },
+])
+
 export function getSparkyAppAction(screen) {
   return SPARKY_APP_ACTIONS.find((action) => action.screen === screen) || null
 }

@@ -1,7 +1,7 @@
 import { SPARKY_SYSTEM_PROMPT } from './sparkyPrompt.js'
 import { retrieveSparkyKnowledge } from './sparkyKnowledge.js'
 import { classifySparkySafetyIntent } from './sparkySafety.js'
-import { getSparkyAppAction, SPARKY_APP_TOOLS, SPARKY_REALTIME_TOOLS } from '../../shared/sparkyActions.js'
+import { getSparkyAppAction, SPARKY_APP_TOOLS, SPARKY_VOICE_TOOLS } from '../../shared/sparkyActions.js'
 
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses'
 const OPENAI_REALTIME_SECRET_URL = 'https://api.openai.com/v1/realtime/client_secrets'
@@ -314,8 +314,8 @@ export async function handleRealtimeSession(context) {
         session: {
           type: 'realtime',
           model: env.OPENAI_REALTIME_MODEL || 'gpt-realtime-2.1',
-          instructions: knowledgeInstructions(latestUserQuery),
-          tools: SPARKY_REALTIME_TOOLS,
+          instructions: `${knowledgeInstructions(latestUserQuery)}\n\nUse get_current_location only after the user explicitly asks for their current location, coordinates, or nearest Blue Light Phone. The browser executes this tool locally and returns location only for that request. Never infer or fabricate a location.`,
+          tools: SPARKY_VOICE_TOOLS,
           tool_choice: 'auto',
           audio: {
             input: {

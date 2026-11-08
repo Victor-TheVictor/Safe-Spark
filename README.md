@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Open the local URL printed by Vite, normally `http://localhost:5173`. Browser geolocation works on localhost and HTTPS. On a phone, deploy to HTTPS before requesting location.
+`npm run dev` builds the app and starts Cloudflare Pages locally at `http://localhost:5173`, including Sparky's `/api/sparky/*` functions. Browser geolocation and microphone access work on localhost. This local Pages command does not hot-reload; use `npm run dev:vite` for frontend-only Vite work (Sparky AI APIs will be unavailable), or `npm run dev:pages` for the same full-stack preview on port 8790. On a phone, deploy to HTTPS before requesting location or microphone access.
 
 ## Useful commands
 
@@ -64,9 +64,9 @@ You can also set the Pages secret with Wrangler after authenticating:
 npx wrangler pages secret put OPENAI_API_KEY --project-name=safe-spark
 ```
 
-Run the frontend and Pages Functions locally with `npm run dev:pages`. This builds `dist/` and starts Wrangler Pages at its printed local URL. The plain `npm run dev` Vite server does not execute Cloudflare Pages Functions.
+Run the full-stack local preview with `npm run dev` or `npm run dev:pages`; both build `dist/` and start Wrangler Pages. The frontend-only `npm run dev:vite` Vite server does not execute Cloudflare Pages Functions, so AI and voice are unavailable there.
 
-For local AI requests, create a root `.dev.vars` file (already ignored by Git) containing `OPENAI_API_KEY="your-key"`. Do not commit the file. Run `npm run dev:pages` so Cloudflare Pages Functions are served locally; plain `npm run dev` serves the Vite UI only and makes `/api/sparky/*` unavailable. Local and deployed secrets are configured separately.
+For local AI requests, create a root `.dev.vars` file (already ignored by Git) containing `OPENAI_API_KEY="your-key"`. Do not commit the file. Local and deployed secrets are configured separately.
 
 After deployment, open `/api/sparky/health`. It should return `{"ok":true,"service":"sparky","configured":true,...}`. If `configured` is false, add the secret to the correct Cloudflare environment and redeploy. Keep HTTPS enabled for browser location and microphone permissions.
 

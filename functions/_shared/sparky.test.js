@@ -127,6 +127,7 @@ test('Realtime endpoint returns only a short-lived credential and a hashed safet
     assert.equal(body.expires_after.seconds, 90)
     assert.equal(body.session.model, 'gpt-realtime-2.1')
     assert.ok(body.session.tools.some((tool) => tool.name === 'navigate_to_safe_spark_screen'))
+    assert.ok(body.session.tools.some((tool) => tool.name === 'get_current_location'))
     assert.equal(body.session.audio.input.turn_detection.type, 'server_vad')
     assert.equal(body.session.tools[0].strict, undefined)
     assert.doesNotMatch(body.session.instructions, /Recent conversation for continuity/)

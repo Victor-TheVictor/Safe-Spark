@@ -18,8 +18,12 @@ import {
 import './SparkyCompanion.css'
 import SparkyMarkdown from './SparkyMarkdown'
 import { recordSafetyEvent, updateSafetyEventStatus } from './safetyEvents'
-import { resolveSavedEmergencyContact } from './contactActions'
-import { resolveContactActionFromRequest } from './contactActions'
+import {
+  isCurrentLocationRequest,
+  isExplicitContactActionRequest,
+  resolveContactActionFromRequest,
+  resolveSavedEmergencyContact,
+} from './contactActions'
 import { loadContacts, phoneForAction } from '../emergency-contacts/contactStore'
 import { SPARKY_APP_ACTIONS, getSparkyAppAction } from './sparkyActions'
 import { transcriptMatchesSafetyPhrase } from './safetyPhrase'
@@ -40,11 +44,14 @@ function friendlyVoiceError(error) {
   if (error?.name === 'NotReadableError' || error?.name === 'TrackStartError') {
     return 'The microphone is already in use by another app.'
   }
+  if (error?.name === 'TypeError' || /failed to fetch|networkerror/i.test(error?.message || '')) {
+    return 'The browser could not reach the voice service. Open the Cloudflare Pages local preview (npm run dev:pages), use HTTPS or localhost, and check your network.'
+  }
   if (error?.name === 'AbortError') return 'The voice connection was cancelled.'
   return error?.message || 'Voice could not start. Check your connection and try again.'
 }
 
-export default function SparkyCompanion({ profile, path = '/', onNavigate = () => {}, userPosition = null }) {
+export default function SparkyCompanion({ profile, path = '/', onNavigate = () => {}, userPosition = null, nearestBlueLight = null, requestLocation = () => {}, locationError = '' }) {
   const profileId = profile?.id || 'local-profile'
   const isVoicePage = path === '/sparky/voice'
   const isChatPage = path === '/sparky/chat' || path === '/companion'
@@ -70,6 +77,7 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
   const [emergencyEventId, setEmergencyEventId] = useState(null)
   const [emergencyMessage, setEmergencyMessage] = useState('')
   const [pendingContactAction, setPendingContactAction] = useState(null)
+  const [contactActionNotice, setContactActionNotice] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [conversationMenuOpen, setConversationMenuOpen] = useState(false)
 
@@ -117,10 +125,12 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
   useEffect(() => {
     if (!launcherPosition) return undefined
     const clampLauncher = () => {
+      const launcher = document.querySelector('.sparky-floating-mascot')
+      const { width = 62, height = 62 } = launcher?.getBoundingClientRect() || {}
       const navHeight = document.querySelector('.app-bottom-nav')?.getBoundingClientRect().height || 70
       const next = {
-        left: Math.min(Math.max(8, launcherPosition.left), Math.max(8, window.innerWidth - 68)),
-        top: Math.min(Math.max(8, launcherPosition.top), Math.max(8, window.innerHeight - 68 - navHeight)),
+        left: Math.min(Math.max(8, launcherPosition.left), Math.max(8, window.innerWidth - width - 8)),
+        top: Math.min(Math.max(8, launcherPosition.top), Math.max(8, window.innerHeight - height - navHeight - 8)),
       }
       if (next.left !== launcherPosition.left || next.top !== launcherPosition.top) {
         setLauncherPosition(next)
@@ -158,7 +168,7 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
       .catch(() => {
         if (!active) return
         setServiceReady(false)
-        setServiceMessage('Sparky service is not reachable. Run the Cloudflare Pages local server to use AI.')
+        setServiceMessage('Sparky API is not reachable. For local full-stack use, restart with “npm run dev” and open http://localhost:5173.')
       })
     return () => { active = false }
   }, [])
@@ -267,6 +277,51 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
   async function sendMessage(value = draft, inputMode = 'text') {
     const text = value.trim()
     if (!text || sendRef.current || !activeConversation) return
+    const conversationId = activeConversation.id
+    const userMessage = makeSparkyMessage(conversationId, 'user', text, inputMode)
+    appendMessage(conversationId, userMessage)
+    if (inputMode === 'text') setDraft('')
+
+    if (isCurrentLocationRequest(text)) {
+      let reply
+      if (userPosition) {
+        const latitude = userPosition.latitude.toFixed(6)
+        const longitude = userPosition.longitude.toFixed(6)
+        const accuracy = Number.isFinite(userPosition.accuracyMeters) ? ` (GPS accuracy about ±${Math.round(userPosition.accuracyMeters)} m)` : ''
+        const mapUrl = `https://maps.google.com/?q=${latitude},${longitude}`
+        const facility = nearestBlueLight?.facilities?.[0]
+        const facilityName = facility?.description || facility?.name
+        const distance = nearestBlueLight?.distanceMeters
+        const nearby = facilityName && Number.isFinite(distance)
+          ? `\n\nNearest Blue Light Phone: ${facilityName}, ${distance < 1000 ? `${Math.round(distance)} m` : `${(distance / 1000).toFixed(2)} km`} away in a straight line (not walking distance).`
+          : ''
+        reply = `Your current GPS location is **${latitude}, ${longitude}**${accuracy}.${nearby}\n\n[Open these coordinates in Google Maps](${mapUrl}). Your coordinates are handled on this device and are not sent to Sparky's AI.`
+      } else {
+        requestLocation()
+        reply = locationError
+          ? `${locationError} Once location access is allowed, ask “Where am I?” again and I’ll show your current coordinates.`
+          : 'I need your permission to read GPS first. Allow location access in the browser prompt; then ask “Where am I?” again. I will keep the coordinates on this device.'
+      }
+      appendMessage(conversationId, makeSparkyMessage(conversationId, 'assistant', reply, inputMode))
+      setSuggestions([])
+      setErrorMessage('')
+      return
+    }
+
+    if (isExplicitContactActionRequest(text)) {
+      const prepared = prepareContactAction({}, text)
+      const reply = prepared?.resolution === 'ambiguous'
+        ? `I found more than one saved contact in that request: ${prepared.matches.join(', ')}. Please name just one person.`
+        : prepared?.resolution === 'not_found' ? `I couldn't find “${prepared.requestedName}” in Emergency Contacts. Save that person there first, then ask me again.`
+          : prepared?.resolution === 'invalid_phone' ? `The saved phone number for ${prepared.contactName} is incomplete. Update that contact before calling or texting.`
+            : prepared?.resolution === 'invalid' ? 'Tell me which saved contact to call or text. For a text, include the message you want to send.'
+              : `Please confirm the ${prepared.action} action for ${prepared.contact.name} below.`
+      appendMessage(conversationId, makeSparkyMessage(conversationId, 'assistant', reply, inputMode))
+      setErrorMessage('')
+      setSuggestions([])
+      return
+    }
+
     if (serviceReady === false) {
       setErrorMessage(serviceMessage)
       return
@@ -277,12 +332,8 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
     setSuggestions([])
     setCompletion('')
     suggestionAbortRef.current?.abort()
-    const conversationId = activeConversation.id
-    const userMessage = makeSparkyMessage(conversationId, 'user', text, inputMode)
     const previousMessages = activeConversation.messages
     const requestMessages = asApiMessages([...previousMessages, userMessage])
-    appendMessage(conversationId, userMessage)
-    if (inputMode === 'text') setDraft('')
     const controller = new AbortController()
     chatAbortRef.current = controller
     setStreamingReply('')
@@ -444,14 +495,32 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
   }
 
   function executeVoiceTool(name, rawArguments, callId) {
-    if (!['navigate_to_safe_spark_screen', 'request_emergency_contact_action'].includes(name) || typeof callId !== 'string' || handledVoiceToolCallsRef.current.has(callId)) return
+    if (!['navigate_to_safe_spark_screen', 'request_emergency_contact_action', 'get_current_location'].includes(name) || typeof callId !== 'string' || handledVoiceToolCallsRef.current.has(callId)) return
     handledVoiceToolCallsRef.current.add(callId)
     let args
     try { args = JSON.parse(rawArguments) } catch { args = null }
     const channel = realtimeRef.current.channel
     if (channel?.readyState !== 'open') return
     let toolOutput
-    if (name === 'navigate_to_safe_spark_screen') {
+    if (name === 'get_current_location') {
+      if (!userPosition) {
+        requestLocation()
+        toolOutput = { available: false, message: 'No current GPS fix is available yet. The app has requested permission locally. Ask the user to allow the browser location prompt and try again; do not guess.' }
+      } else {
+        const facility = nearestBlueLight?.facilities?.[0]
+        toolOutput = {
+          available: true,
+          latitude: Number(userPosition.latitude.toFixed(6)),
+          longitude: Number(userPosition.longitude.toFixed(6)),
+          accuracy_meters: Number.isFinite(userPosition.accuracyMeters) ? Math.round(userPosition.accuracyMeters) : null,
+          nearest_blue_light: facility ? {
+            name: facility.description || facility.name || 'Blue Light Phone on the Safety Map',
+            straight_line_distance_meters: Number.isFinite(nearestBlueLight?.distanceMeters) ? Math.round(nearestBlueLight.distanceMeters) : null,
+          } : null,
+          note: 'These are permissioned device coordinates for this explicit request. Distance is straight-line, not walking distance.',
+        }
+      }
+    } else if (name === 'navigate_to_safe_spark_screen') {
       const action = getSparkyAppAction(args?.screen)
       if (!action) toolOutput = { opened: false, reason: 'Screen is not allowlisted.' }
       else { onNavigate(action.path); toolOutput = { opened: true, screen: action.label } }
@@ -466,12 +535,19 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
     }
     channel.send(JSON.stringify({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: callId, output: JSON.stringify(toolOutput) } }))
     channel.send(JSON.stringify({ type: 'response.create' }))
-    setVoiceMessage(name === 'navigate_to_safe_spark_screen' && toolOutput.opened ? `Opening ${toolOutput.screen}.` : name === 'request_emergency_contact_action' && toolOutput.confirmation_required ? `Please confirm the ${toolOutput.action} action for ${toolOutput.contact} on this screen.` : toolOutput.matches?.length ? `Several saved contacts matched: ${toolOutput.matches.join(', ')}. Please clarify which person you mean.` : toolOutput.reason || 'I could not verify that action. Check your saved contacts or try again.')
+    const status = name === 'get_current_location'
+      ? toolOutput.available ? 'Your current position was provided for this request only.' : 'Location is not available yet. Allow the browser permission and ask again.'
+      : name === 'navigate_to_safe_spark_screen' && toolOutput.opened ? `Opening ${toolOutput.screen}.`
+        : name === 'request_emergency_contact_action' && toolOutput.confirmation_required ? `Please confirm the ${toolOutput.action} action for ${toolOutput.contact} on this screen.`
+          : toolOutput.matches?.length ? `Several saved contacts matched: ${toolOutput.matches.join(', ')}. Please clarify which person you mean.`
+            : toolOutput.reason || 'I could not verify that action. Check your saved contacts or try again.'
+    setVoiceMessage(status)
   }
 
   function prepareContactAction(args, userMessage = '') {
     const resolved = resolveContactActionFromRequest(args, userMessage, loadContacts())
-    const requestedName = resolved.contact_name
+    if (resolved.contact_matches?.length > 1) return { resolution: 'ambiguous', matches: resolved.contact_matches }
+    const requestedName = resolved.contact_name || resolved.requested_name
     const action = resolved.action
     const message = resolved.message.slice(0, 500)
     if (!requestedName || !['call', 'text'].includes(action) || (action === 'text' && !message)) return { resolution: 'invalid' }
@@ -482,6 +558,7 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
     const phone = phoneForAction(contact.phone)
     if (phone.replace(/\D/g, '').length < 7) return { resolution: 'invalid_phone', contactName: contact.name }
     const prepared = { conversationId: voiceConversationIdRef.current || storeRef.current.activeConversationId, contact: { id: contact.id, name: contact.name, phone }, action, message: action === 'text' ? message : null }
+    setContactActionNotice('')
     setPendingContactAction(prepared)
     return prepared
   }
@@ -494,7 +571,21 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
       : `Your messaging app is opening for ${contact.name}. Review and send the message there; delivery is not confirmed.`
     if (conversationId) appendMessage(conversationId, makeSparkyMessage(conversationId, 'assistant', status, isVoicePage ? 'voice' : 'text'))
     setVoiceMessage(status)
-    setPendingContactAction(null)
+    setPendingContactAction((current) => current ? { ...current, handedOff: true } : current)
+    setContactActionNotice(action === 'text'
+      ? 'Messages should open with this draft. Review and tap Send there; SafeSpark cannot send it or confirm delivery. You can also copy the message below.'
+      : 'Your phone app should open. Complete the call there; SafeSpark cannot place or confirm it.')
+  }
+
+  async function copyContactMessage() {
+    const message = pendingContactAction?.message
+    if (!message) return
+    try {
+      await navigator.clipboard.writeText(message)
+      setContactActionNotice('Message copied. Open Messages, paste it, review the recipient, and tap Send.')
+    } catch {
+      setContactActionNotice('Copy is unavailable in this browser. Select and copy the message shown above, then paste it into Messages.')
+    }
   }
 
   async function startVoice() {
@@ -631,7 +722,14 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
         body: sdp,
       })
       if (voiceCancelledRef.current) throw new DOMException('Voice connection cancelled.', 'AbortError')
-      if (!answerResponse.ok) throw new Error('OpenAI could not start the Realtime voice session.')
+      if (!answerResponse.ok) {
+        let providerCode = ''
+        try { providerCode = (await answerResponse.json())?.error?.code || '' } catch { /* Do not expose response bodies or credentials in UI. */ }
+        if (answerResponse.status === 401 || answerResponse.status === 403) throw new Error('OpenAI rejected the temporary voice credential. Check the Cloudflare API secret and Realtime model access, then retry.')
+        if (answerResponse.status === 429) throw new Error('OpenAI Realtime is over quota or rate limited. Check project billing and limits.')
+        if (answerResponse.status === 400) throw new Error(`OpenAI rejected the voice session configuration${providerCode ? ` (${providerCode})` : ''}. Check the Realtime model and settings.`)
+        throw new Error(`The voice handshake failed (HTTP ${answerResponse.status}). Check the connection and try again.`)
+      }
       const answerSdp = await answerResponse.text()
       await peer.setRemoteDescription({ type: 'answer', sdp: answerSdp })
     } catch (error) {
@@ -708,10 +806,11 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
   }
 
   function handleLauncherPointerDown(event) {
-    if (event.button !== 0) return
+    if (event.pointerType === 'mouse' && event.button !== 0) return
+    suppressLauncherClickRef.current = false
     const rect = event.currentTarget.getBoundingClientRect()
-    launcherDragRef.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, left: rect.left, top: rect.top, moved: false, position: launcherPosition }
-    event.currentTarget.setPointerCapture(event.pointerId)
+    launcherDragRef.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, left: rect.left, top: rect.top, width: rect.width, height: rect.height, moved: false, position: launcherPosition }
+    try { event.currentTarget.setPointerCapture(event.pointerId) } catch { /* Pointer capture is optional in older Safari versions. */ }
   }
 
   function handleLauncherPointerMove(event) {
@@ -723,9 +822,10 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
     drag.moved = true
     suppressLauncherClickRef.current = true
     setLauncherDragging(true)
+    const navHeight = document.querySelector('.app-bottom-nav')?.getBoundingClientRect().height || 70
     const position = {
-      left: Math.min(Math.max(8, drag.left + dx), Math.max(8, window.innerWidth - 68)),
-      top: Math.min(Math.max(8, drag.top + dy), Math.max(8, window.innerHeight - 68 - 78)),
+      left: Math.min(Math.max(8, drag.left + dx), Math.max(8, window.innerWidth - drag.width - 8)),
+      top: Math.min(Math.max(8, drag.top + dy), Math.max(8, window.innerHeight - drag.height - navHeight - 8)),
     }
     drag.position = position
     setLauncherPosition(position)
@@ -738,8 +838,10 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
     if (drag.moved) {
       try { localStorage.setItem('safespark-sparky-launcher-position', JSON.stringify(drag.position)) } catch { /* Position is a convenience, not required state. */ }
       setLauncherDragging(false)
-      window.setTimeout(() => { suppressLauncherClickRef.current = false }, 0)
+    } else {
+      suppressLauncherClickRef.current = false
     }
+    try { event.currentTarget.releasePointerCapture(event.pointerId) } catch { /* Pointer capture may already be released. */ }
   }
 
   function openSmsComposer(contact) {
@@ -761,7 +863,7 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
   if (!isSparkyPage) return (
     <>
       <audio ref={audioRef} className="sparky-audio-output" autoPlay playsInline aria-label="Sparky voice response audio" />
-      <button className={`sparky-floating-mascot${voiceState === 'speaking' ? ' is-speaking' : ''}${emergencyActive ? ' is-emergency' : ''}${launcherDragging ? ' is-dragging' : ''}`} type="button" aria-label={voiceState !== 'idle' && voiceState !== 'error' ? 'Return to active Sparky voice conversation' : 'Open Sparky text chat'} title="Drag to move · activate to open Sparky" style={launcherPosition ? { left: `${launcherPosition.left}px`, top: `${launcherPosition.top}px`, right: 'auto', bottom: 'auto' } : undefined} onPointerDown={handleLauncherPointerDown} onPointerMove={handleLauncherPointerMove} onPointerUp={handleLauncherPointerUp} onPointerCancel={handleLauncherPointerUp} onClick={() => { if (suppressLauncherClickRef.current) return; onNavigate(voiceState !== 'idle' && voiceState !== 'error' ? '/sparky/voice' : '/sparky/chat') }}>
+      <button className={`sparky-floating-mascot${voiceState === 'speaking' ? ' is-speaking' : ''}${emergencyActive ? ' is-emergency' : ''}${launcherDragging ? ' is-dragging' : ''}`} type="button" aria-label={voiceState !== 'idle' && voiceState !== 'error' ? 'Return to active Sparky voice conversation' : 'Open Sparky text chat'} title="Drag to move · activate to open Sparky" style={launcherPosition ? { left: `${launcherPosition.left}px`, top: `${launcherPosition.top}px`, right: 'auto', bottom: 'auto' } : undefined} onPointerDown={handleLauncherPointerDown} onPointerMove={handleLauncherPointerMove} onPointerUp={handleLauncherPointerUp} onPointerCancel={handleLauncherPointerUp} onClick={(event) => { if (suppressLauncherClickRef.current) { event.preventDefault(); event.stopPropagation(); suppressLauncherClickRef.current = false; return } onNavigate(voiceState !== 'idle' && voiceState !== 'error' ? '/sparky/voice' : '/sparky/chat') }} onDragStart={(event) => event.preventDefault()}>
         <span className="sparky-mascot-frame"><img className="sparky-mascot-image" src="/assets/brand/sparky-mascot.png" alt=""/><span className="sparky-mouth" aria-hidden="true" /></span>
         {voiceState === 'listening' && <span className="sparky-floating-status" aria-label="Sparky is listening" />}
       </button>
@@ -828,13 +930,13 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
           {voiceMessage && <p className={voiceState === 'error' ? 'sparky-error' : 'sparky-inline-status'} role="status">{voiceMessage}</p>}
           {voiceState === 'idle' || voiceState === 'error' ? <button type="button" className="sparky-voice-button" onClick={startVoice}><Mic size={18} /> Start voice conversation</button> : <div className="sparky-voice-controls"><button type="button" className="sparky-secondary-button" onClick={toggleMicrophoneMute}>{microphoneMuted ? <><Mic size={17} /> Unmute</> : <><MicOff size={17} /> Mute</>}</button><button type="button" className="sparky-voice-button sparky-end-voice-button" onClick={endVoice}><X size={17} /> End voice</button></div>}
           {playbackBlocked && <button type="button" className="sparky-secondary-button" onClick={() => audioRef.current?.play().then(() => { setPlaybackBlocked(false); setVoiceMessage('Voice audio enabled.') }).catch(() => {})}><Volume2 size={16} /> Enable voice audio</button>}
-          <p className="sparky-privacy-note">Microphone access starts only when you begin voice. Audio is sent to OpenAI Realtime for conversation and is not recorded by SafeSpark.</p>
+          <p className="sparky-privacy-note">Microphone access starts only when you begin voice. Audio is sent to OpenAI Realtime and is not recorded by SafeSpark. GPS stays on this device unless you ask for your current location during voice; then it is shared with Sparky for that answer.</p>
         </section>}
 
         {emergencyActive && <section className="sparky-emergency-panel" role="alert" aria-live="assertive"><div className="sparky-emergency-heading"><strong>{emergencyIsTest ? 'Safety phrase test' : 'Safety phrase detected'}</strong><span>{emergencyIsTest ? 'Simulation only' : 'Review before taking action'}</span></div><p>{emergencyIsTest ? 'This is only a local test. No call or message has been sent.' : `Safety event recorded on this device at ${emergencyTimestamp ? new Date(emergencyTimestamp).toLocaleTimeString() : 'now'}. No call or message has been sent.`}</p>{currentCoordinates && <p className="sparky-emergency-location">Your location: {currentCoordinates} <a href={`https://maps.google.com/?q=${userPosition.latitude},${userPosition.longitude}`} target="_blank" rel="noreferrer">Open map</a></p>}{!emergencyIsTest && <div className="sparky-emergency-actions"><a href="tel:911" onClick={() => emergencyEventId && updateSafetyEventStatus(profileId, emergencyEventId, 'dialer_opened_unconfirmed')}>Call 911</a>{contacts.map((contact) => <button type="button" key={contact.id} onClick={() => openSmsComposer(contact)}>Text {contact.name}</button>)}</div>}{emergencyMessage && <p role="status">{emergencyMessage}</p>}<button className="sparky-dismiss-emergency" type="button" onClick={() => { if (window.confirm('Dismiss the local safety alert? No alert has been sent.')) { emergencyTriggeredRef.current = true; setEmergencyActive(false) } }}>Dismiss local alert</button></section>}
         {pendingContactAction && <section className="sparky-contact-confirmation" aria-labelledby="sparky-contact-action-title">
-          <div><p className="section-kicker">CONFIRM ON YOUR DEVICE</p><h2 id="sparky-contact-action-title">{pendingContactAction.action === 'call' ? `Call ${pendingContactAction.contact.name}?` : `Text ${pendingContactAction.contact.name}?`}</h2><p className="sparky-contact-phone">{pendingContactAction.contact.phone}</p>{pendingContactAction.action === 'text' && <blockquote>{pendingContactAction.message}</blockquote>}<p className="sparky-privacy-note">SafeSpark will open your phone or messaging app. {pendingContactAction.action === 'text' ? 'Review and send the message there; delivery is not confirmed here.' : 'You must complete the call there.'}</p></div>
-          <div className="sparky-contact-confirm-actions">{pendingContactAction.action === 'call' ? <a href={`tel:${pendingContactAction.contact.phone}`} onClick={launchContactAction}><Phone size={16} aria-hidden="true" /> Open phone</a> : <a href={`sms:${pendingContactAction.contact.phone}?&body=${encodeURIComponent(pendingContactAction.message)}`} onClick={launchContactAction}><Send size={16} aria-hidden="true" /> Open Messages</a>}<button type="button" onClick={() => { setPendingContactAction(null); setVoiceMessage('Contact action cancelled.') }}>Cancel</button></div>
+          <div><p className="section-kicker">CONFIRM ON YOUR DEVICE</p><h2 id="sparky-contact-action-title">{pendingContactAction.action === 'call' ? `Call ${pendingContactAction.contact.name}?` : `Text ${pendingContactAction.contact.name}?`}</h2><p className="sparky-contact-phone">{pendingContactAction.contact.phone}</p>{pendingContactAction.action === 'text' && <blockquote>{pendingContactAction.message}</blockquote>}<p className="sparky-privacy-note">SafeSpark will open your phone or messaging app. {pendingContactAction.action === 'text' ? 'Review and send the message there; delivery is not confirmed here.' : 'You must complete the call there.'}</p>{contactActionNotice && <p className="sparky-inline-status" role="status">{contactActionNotice}</p>}</div>
+          <div className="sparky-contact-confirm-actions">{pendingContactAction.action === 'call' ? <a href={`tel:${pendingContactAction.contact.phone}`} onClick={launchContactAction}><Phone size={16} aria-hidden="true" /> Open phone</a> : <><a href={`sms:${pendingContactAction.contact.phone}?body=${encodeURIComponent(pendingContactAction.message)}`} onClick={launchContactAction}><Send size={16} aria-hidden="true" /> Open Messages</a><button type="button" onClick={copyContactMessage}>Copy message</button></>}<button type="button" onClick={() => { setPendingContactAction(null); setContactActionNotice(''); setVoiceMessage(pendingContactAction.handedOff ? 'Contact action handed off to your device; delivery is unconfirmed.' : 'Contact action cancelled.') }}>{pendingContactAction.handedOff ? 'Done' : 'Cancel'}</button></div>
         </section>}
         {errorMessage && <div className="sparky-error" role="alert">{errorMessage}<button type="button" aria-label="Dismiss error" onClick={() => setErrorMessage('')}><X size={15} /></button></div>}
       </section>
