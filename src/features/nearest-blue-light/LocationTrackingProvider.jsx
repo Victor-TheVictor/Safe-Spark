@@ -6,6 +6,20 @@ const SESSION_KEY = 'safespark-location-session'
 const MIN_UPDATE_INTERVAL_MS = 5_000
 const MIN_MOVEMENT_METERS = 12
 const MAX_RESTORED_POSITION_AGE_MS = 30_000
+const PLACE_LOOKUP_MIN_MOVEMENT_METERS = 100
+const PLACE_LOOKUP_MIN_INTERVAL_MS = 60_000
+
+function formatPlaceName(result) {
+  const address = result.address ?? {}
+  const road = address.road || address.pedestrian || address.footway || address.path
+  const street = [address.house_number, road].filter(Boolean).join(' ')
+  const locality = address.city || address.town || address.village || address.suburb || address.neighbourhood
+  const namedPlace = result.name && result.name !== result.display_name ? result.name : ''
+  if (street && locality) return `${street}, ${locality}`
+  if (street) return street
+  if (namedPlace && locality) return `${namedPlace}, ${locality}`
+  return locality || namedPlace || result.display_name || ''
+}
 
 function readSession() {
   try {
@@ -57,12 +71,26 @@ export function LocationTrackingProvider({ children }) {
   const [trackingActive, setTrackingActive] = useState(() => initialSession.trackingActive)
   const [watchAttempt, setWatchAttempt] = useState(0)
   const [userPosition, setUserPosition] = useState(() => initialSession.position
-    ? { latitude: initialSession.position.latitude, longitude: initialSession.position.longitude }
+    ? {
+      latitude: initialSession.position.latitude,
+      longitude: initialSession.position.longitude,
+      accuracyMeters: initialSession.position.accuracyMeters,
+      capturedAt: initialSession.position.capturedAt ?? initialSession.position.updatedAt,
+    }
     : null)
   const [locationError, setLocationError] = useState('')
+  const [currentPlace, setCurrentPlace] = useState('')
+  const [placeStatus, setPlaceStatus] = useState('idle')
+  const [placeAttempt, setPlaceAttempt] = useState(0)
+  const placeLookupRef = useRef({ lastAt: 0, position: null, pendingTimer: null, latestPosition: null, requestId: 0 })
   const lastAcceptedPosition = useRef(initialSession.position
     ? {
-      position: { latitude: initialSession.position.latitude, longitude: initialSession.position.longitude },
+      position: {
+        latitude: initialSession.position.latitude,
+        longitude: initialSession.position.longitude,
+        accuracyMeters: initialSession.position.accuracyMeters,
+        capturedAt: initialSession.position.capturedAt ?? initialSession.position.updatedAt,
+      },
       timestamp: initialSession.position.updatedAt,
     }
     : null)
@@ -103,6 +131,8 @@ export function LocationTrackingProvider({ children }) {
       const nextPosition = {
         latitude: result.coords.latitude,
         longitude: result.coords.longitude,
+        accuracyMeters: result.coords.accuracy,
+        capturedAt: result.timestamp || Date.now(),
       }
       if (!Number.isFinite(nextPosition.latitude) || !Number.isFinite(nextPosition.longitude)) return
 
@@ -123,6 +153,8 @@ export function LocationTrackingProvider({ children }) {
       if (!active) return
       setLocationError(errorMessage(error))
       setUserPosition(null)
+      setCurrentPlace('')
+      setPlaceStatus('idle')
       lastAcceptedPosition.current = null
       writeSession({ trackingActive: true, position: null })
     }
@@ -144,6 +176,60 @@ export function LocationTrackingProvider({ children }) {
       if (watchId !== undefined) navigator.geolocation.clearWatch(watchId)
     }
   }, [trackingActive, watchAttempt])
+
+  useEffect(() => {
+    const lookupState = placeLookupRef.current
+    if (!userPosition) {
+      lookupState.requestId += 1
+      if (lookupState.pendingTimer !== null) window.clearTimeout(lookupState.pendingTimer)
+      lookupState.pendingTimer = null
+      lookupState.latestPosition = null
+      return undefined
+    }
+
+    lookupState.latestPosition = userPosition
+    if (lookupState.position && haversineDistanceMeters(lookupState.position, userPosition) < PLACE_LOOKUP_MIN_MOVEMENT_METERS) return undefined
+    lookupState.requestId += 1
+
+    const runLookup = async () => {
+      lookupState.pendingTimer = null
+      const position = lookupState.latestPosition
+      if (!position) return
+      const requestId = ++lookupState.requestId
+      lookupState.lastAt = Date.now()
+      lookupState.position = position
+      setPlaceStatus('loading')
+      try {
+        const query = new URLSearchParams({
+          format: 'jsonv2',
+          lat: position.latitude.toFixed(5),
+          lon: position.longitude.toFixed(5),
+          zoom: '18',
+          addressdetails: '1',
+        })
+        // Reverse lookup is cached by location and throttled because the public Nominatim service is community-funded.
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?${query}`, {
+          headers: { 'Accept-Language': navigator.language || 'en' },
+          cache: 'force-cache',
+        })
+        if (!response.ok) throw new Error(`Place lookup returned ${response.status}`)
+        const result = await response.json()
+        const label = formatPlaceName(result)
+        if (!label) throw new Error('No nearby place name was returned')
+        if (requestId !== lookupState.requestId) return
+        setCurrentPlace(label)
+        setPlaceStatus('ready')
+      } catch {
+        if (requestId === lookupState.requestId) setPlaceStatus('error')
+      }
+    }
+
+    const remaining = Math.max(0, PLACE_LOOKUP_MIN_INTERVAL_MS - (Date.now() - lookupState.lastAt))
+    if (lookupState.pendingTimer === null) {
+      lookupState.pendingTimer = window.setTimeout(runLookup, remaining)
+    }
+    return undefined
+  }, [userPosition, placeAttempt])
 
   const locations = useMemo(() => getUniqueBlueLightLocations(features ?? []), [features])
   const nearest = useMemo(
@@ -176,6 +262,11 @@ export function LocationTrackingProvider({ children }) {
       return
     }
     setLocationError('')
+    if (userPosition) {
+      placeLookupRef.current.position = null
+      placeLookupRef.current.lastAt = 0
+      setPlaceAttempt((attempt) => attempt + 1)
+    }
     if (dataError || (!features && !dataLoading)) {
       setDataLoading(true)
       setDataAttempt((attempt) => attempt + 1)
@@ -186,11 +277,13 @@ export function LocationTrackingProvider({ children }) {
     writeSession({ trackingActive: true, position: lastAcceptedPosition.current
       ? { ...lastAcceptedPosition.current.position, updatedAt: lastAcceptedPosition.current.timestamp }
       : null })
-  }, [dataError, dataLoading, features])
+  }, [dataError, dataLoading, features, userPosition])
 
   const stopLocationUpdates = useCallback(() => {
     setTrackingActive(false)
     setUserPosition(null)
+    setCurrentPlace('')
+    setPlaceStatus('idle')
     setLocationError('')
     lastAcceptedPosition.current = null
     try {
@@ -208,13 +301,15 @@ export function LocationTrackingProvider({ children }) {
     trackingActive,
     userPosition,
     nearest,
+    currentPlace,
+    placeStatus,
     status,
     error: locationError || dataError || (locationUnavailable
       ? 'Location access is unavailable in this browser. Enable device location services or try another browser.'
       : ''),
     requestLocation,
     stopLocationUpdates,
-  }), [features, locations, dataLoading, dataError, trackingActive, userPosition, nearest, status, locationError, locationUnavailable, requestLocation, stopLocationUpdates])
+  }), [features, locations, dataLoading, dataError, trackingActive, userPosition, nearest, currentPlace, placeStatus, status, locationError, locationUnavailable, requestLocation, stopLocationUpdates])
 
   return <LocationTrackingContext.Provider value={value}>{children}</LocationTrackingContext.Provider>
 }

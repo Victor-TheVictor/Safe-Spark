@@ -17,7 +17,7 @@ import './pages/FeaturePage.css'
 const PROFILE_KEY = 'safespark-profile'
 
 function AuthenticatedAppShell({ profile, currentPath, navigateTo, handleLogout, handleForgetProfile }) {
-  const { userPosition, nearest, requestLocation, error: locationError } = useLocationTracking()
+  const { userPosition, nearest, currentPlace, placeStatus, requestLocation, error: locationError } = useLocationTracking()
   const knownPaths = ['/', '/map', '/contacts', '/companion', '/sparky/chat', '/sparky/voice', '/crime-log', '/safety-gear', '/profile']
   return (
     <>
@@ -44,7 +44,7 @@ function AuthenticatedAppShell({ profile, currentPath, navigateTo, handleLogout,
           ))}
         </nav>
       </div>
-      <SparkyCompanion profile={profile} path={currentPath} onNavigate={navigateTo} userPosition={userPosition} nearestBlueLight={nearest} requestLocation={requestLocation} locationError={locationError} />
+      <SparkyCompanion profile={profile} path={currentPath} onNavigate={navigateTo} userPosition={userPosition} currentPlace={currentPlace} placeStatus={placeStatus} nearestBlueLight={nearest} requestLocation={requestLocation} locationError={locationError} />
     </>
   )
 }

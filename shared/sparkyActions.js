@@ -49,11 +49,37 @@ export const SPARKY_VOICE_TOOLS = Object.freeze([
   {
     type: 'function',
     name: 'get_current_location',
-    description: 'Use only when the user explicitly asks where they are, asks for their current coordinates, or asks for the nearest Blue Light Phone. The app reads permissioned GPS locally and returns the result to this active voice conversation. Never call proactively or claim a location is known if GPS is unavailable.',
+    description: 'Use only when the user explicitly asks where they are or asks for the nearest Blue Light Phone. The app returns a human-readable nearby place name and Blue Light distance; never return raw GPS coordinates. Never call proactively or claim a location is known if GPS is unavailable.',
     parameters: { type: 'object', properties: {}, required: [], additionalProperties: false },
   },
 ])
 
 export function getSparkyAppAction(screen) {
   return SPARKY_APP_ACTIONS.find((action) => action.screen === screen) || null
+}
+
+const ACTION_TERMS = Object.freeze({
+  home: ['home', 'homepage', 'dashboard', '主页', '首页'],
+  safety_map: ['safety map', 'blue light map', 'map', '地图', '蓝灯地图'],
+  crime_log: ['crime log', 'crime report', 'incident log', 'crime', '犯罪记录', '犯罪日志', '犯罪报告'],
+  safety_gear: ['safety gear', 'safety equipment', 'gear shop', 'gear', 'shop', '安全装备', '安全用品', '装备'],
+  emergency_contacts: ['emergency contacts', 'trusted contacts', 'safety circle', 'contacts', '紧急联系人', '安全圈', '联系人'],
+  profile: ['profile', 'account', '个人资料', '账户'],
+  sparky_voice: ['sparky voice', 'voice chat', 'voice mode', '语音对话', '语音模式'],
+  sparky_chat: ['ai companion', 'sparky chat', 'companion', 'chat', 'ai伙伴', '聊天'],
+})
+
+export function resolveSparkyNavigationAction(text) {
+  const value = String(text || '').trim().toLocaleLowerCase()
+  for (const action of SPARKY_APP_ACTIONS) {
+    if ((ACTION_TERMS[action.screen] || []).some((term) => value === term.toLocaleLowerCase())) return action
+  }
+  const hasNavigationIntent = /\b(?:open|show|go to|take me to|navigate to|bring up|switch to|let me see|view|check|browse|visit|i want to see|i need to get to)\b|(?:打开|查看|带我去|带我到|进入|切换到|我要看|去看看|帮我添加|添加联系人)/i.test(value)
+  if (/\b(?:nearest|closest|find)\b.{0,40}\bblue light\b|\bwhere is the nearest blue light\b/i.test(value) || /最近.{0,8}(?:蓝灯|紧急电话)/i.test(value)) return getSparkyAppAction('safety_map')
+  if (!hasNavigationIntent) return null
+  for (const action of SPARKY_APP_ACTIONS) {
+    const terms = ACTION_TERMS[action.screen] || []
+    if (terms.some((term) => value.includes(term.toLocaleLowerCase()))) return action
+  }
+  return null
 }

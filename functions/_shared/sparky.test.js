@@ -141,6 +141,21 @@ test('Realtime endpoint returns only a short-lived credential and a hashed safet
   assert.equal(text.includes('test-secret'), false)
 })
 
+test('Realtime session failures expose sanitized provider diagnostics without secrets', async () => {
+  globalThis.fetch = async () => Response.json({ error: {
+    type: 'server_error', code: 'voice_unavailable',
+    message: 'Voice rejected. Bearer sk-proj-12345678901234567890 client_secret=ek_session-12345678901234567890',
+  } }, { status: 500 })
+  const response = await handleRealtimeSession(context('realtime/session', { messages: conversation, safety_id: 'local-profile-id' }))
+  const body = await response.json()
+  assert.equal(response.status, 502)
+  assert.equal(body.diagnostics.stage, 'create_realtime_session')
+  assert.equal(body.diagnostics.httpStatus, 500)
+  assert.equal(body.diagnostics.errorType, 'server_error')
+  assert.match(body.diagnostics.errorMessage, /Bearer \[redacted\]/)
+  assert.doesNotMatch(JSON.stringify(body), /sk-proj-|ek_session-/)
+})
+
 test('provider failures return a generic error without echoing credentials', async () => {
   globalThis.fetch = async () => new Response('provider failure', { status: 500 })
   const response = await handleSuggestions(context('suggestions', {

@@ -30,10 +30,24 @@ test('parses direct send requests even if AI service is unavailable', () => {
     action: 'text',
     message: '我安全。',
   })
+  assert.equal(isExplicitContactActionRequest('Could you send Victor a text saying I am safe?'), true)
+  assert.equal(isExplicitContactActionRequest('I want to message Victor that I am safe.'), true)
+  const victor = [{ ...contacts[0], name: 'Victor' }]
+  assert.deepEqual(resolveContactActionFromRequest({}, 'Could you send Victor a text saying I am safe?', victor), {
+    contact_name: 'Victor', action: 'text', message: 'I am safe?',
+  })
+  assert.deepEqual(resolveContactActionFromRequest({}, 'I want to message Victor that I am safe.', victor), {
+    contact_name: 'Victor', action: 'text', message: 'I am safe.',
+  })
 })
 
 test('recognizes location questions in English and Chinese for local handling', () => {
   assert.equal(isCurrentLocationRequest('Where am I right now?'), true)
+  assert.equal(isCurrentLocationRequest('Can you tell me where I am?'), true)
+  assert.equal(isCurrentLocationRequest('What is my current address?'), true)
+  assert.equal(isCurrentLocationRequest('Tell me my location'), true)
+  assert.equal(isCurrentLocationRequest('What is my exact location?'), true)
+  assert.equal(isCurrentLocationRequest('Can you check my current address?'), true)
   assert.equal(isCurrentLocationRequest('我现在在哪？'), true)
   assert.equal(isCurrentLocationRequest('How does GPS work?'), false)
 })

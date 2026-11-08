@@ -7,6 +7,17 @@ async function readError(response) {
   }
 }
 
+async function readRealtimeError(response) {
+  let payload = {}
+  try { payload = await response.json() } catch { /* Keep the HTTP status if the body is not JSON. */ }
+  const error = new Error(typeof payload.error === 'string' ? payload.error : `Request failed (${response.status}).`)
+  error.status = response.status
+  error.type = payload.diagnostics?.errorType || ''
+  error.code = payload.diagnostics?.errorCode || ''
+  error.stage = payload.diagnostics?.stage || ''
+  return error
+}
+
 export async function streamSparkyReply(messages, { signal, onDelta } = {}) {
   const response = await fetch('/api/sparky/chat', {
     method: 'POST',
@@ -96,10 +107,16 @@ export async function createRealtimeClientSecret(messages, { signal, safetyId } 
     body: JSON.stringify({ messages: messages.slice(-12), safety_id: safetyId }),
     signal,
   })
-  if (!response.ok) throw new Error(await readError(response))
-  const payload = await response.json()
-  if (typeof payload.client_secret !== 'string' || !payload.client_secret) {
-    throw new Error('The voice session did not return a temporary credential.')
+  if (!response.ok) throw await readRealtimeError(response)
+  let payload
+  try { payload = await response.json() } catch (error) {
+    error.status = response.status
+    throw error
   }
-  return payload
+  if (typeof payload.client_secret !== 'string' || !payload.client_secret) {
+    const error = new Error('The voice session did not return a temporary credential.')
+    error.status = response.status
+    throw error
+  }
+  return { ...payload, http_status: response.status }
 }

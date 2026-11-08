@@ -29,6 +29,7 @@ const featureCards = [
     title: 'AI Companion',
     description: 'Get support from your personal safety companion.',
     Icon: Bot,
+    image: '/assets/brand/sparky-mascot.png',
     tone: 'blue',
   },
   {
@@ -187,7 +188,7 @@ export default function ProfileHome({ profile, onLogout, onOpenMap, onNavigate, 
       <div className="home-content">
         <section className="feature-section" aria-label="Safe Spark features">
           <div className="feature-grid">
-            {featureCards.map(({ title, description, Icon, tone }) => (
+        {featureCards.map(({ title, description, Icon, image, tone }) => (
               <button
                 className="feature-card"
                 key={title}
@@ -198,8 +199,10 @@ export default function ProfileHome({ profile, onLogout, onOpenMap, onNavigate, 
                   if (route) onNavigate?.(route)
                 }}
               >
-                <span className={`feature-icon feature-icon-${tone}`}>
-                  <Icon size={22} strokeWidth={1.9} aria-hidden="true" />
+                <span className={`feature-icon feature-icon-${tone}${image ? ' feature-icon-mascot' : ''}`}>
+                  {image
+                    ? <img className="feature-mascot" src={image} alt="" aria-hidden="true" />
+                    : <Icon size={22} strokeWidth={1.9} aria-hidden="true" />}
                 </span>
                 <span className="feature-card-copy">
                   <span className="feature-card-title">{title}</span>
@@ -290,7 +293,7 @@ export default function ProfileHome({ profile, onLogout, onOpenMap, onNavigate, 
             onClick={() => handleNavigation(label)}
           >
             <Icon size={21} strokeWidth={label === 'Home' ? 2.2 : 1.8} aria-hidden="true" />
-            <span>{label}</span>
+            <span className="visually-hidden">{label}</span>
           </button>
         ))}
       </nav>}

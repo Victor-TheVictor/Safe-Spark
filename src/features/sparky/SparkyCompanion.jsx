@@ -25,33 +25,51 @@ import {
   resolveSavedEmergencyContact,
 } from './contactActions'
 import { loadContacts, phoneForAction } from '../emergency-contacts/contactStore'
-import { SPARKY_APP_ACTIONS, getSparkyAppAction } from './sparkyActions'
+import { SPARKY_APP_ACTIONS, getSparkyAppAction, resolveSparkyNavigationAction } from './sparkyActions'
 import { transcriptMatchesSafetyPhrase } from './safetyPhrase'
 
 const DEFAULT_SAFETY_PHRASE = 'Red Lantern'
 const RECENT_CONTEXT_LIMIT = 16
+
+function createVoiceDiagnostics() {
+  return {
+    stage: 'idle', sessionHttpStatus: null, sdpHttpStatus: null, sdpOfferCreated: false,
+    sdpAnswerReceived: false, sdpAnswerApplied: false,
+    peerConnectionState: 'new', iceConnectionState: 'new', iceGatheringState: 'new',
+    signalingState: 'stable', dataChannelState: 'new', microphonePermission: 'unknown',
+    microphoneTrackState: 'none', microphoneTrackEnabled: false, microphoneTrackMuted: false,
+    audioPlaybackError: '', errorEventType: '', errorType: '', errorCode: '',
+    errorHttpStatus: null, errorMessage: '',
+  }
+}
+
+function safeDiagnosticText(value) {
+  if (typeof value !== 'string') return ''
+  return value
+    .replace(/Bearer\s+[^\s,;]+/gi, 'Bearer [redacted]')
+    .replace(/\b(?:sk|ek|sess|eph)_[A-Za-z0-9_-]{8,}\b/g, '[redacted]')
+    .replace(/(client_secret|api_key|authorization)["'\s:=]+[^\s,;"']+/gi, '$1=[redacted]')
+    .slice(0, 500)
+}
+
+function realtimeErrorDetails(event, stage) {
+  const source = event?.error && typeof event.error === 'object' ? event.error : event || {}
+  const status = Number(source.status ?? event?.status)
+  return {
+    stage,
+    errorEventType: safeDiagnosticText(event?.type || 'error'),
+    errorType: safeDiagnosticText(source.type || source.name || ''),
+    errorCode: safeDiagnosticText(source.code || source.param || ''),
+    errorHttpStatus: Number.isFinite(status) && status > 0 ? status : null,
+    errorMessage: safeDiagnosticText(source.message || event?.message || 'Realtime returned an error event without a message.'),
+  }
+}
+
 function asApiMessages(messages, limit = RECENT_CONTEXT_LIMIT) {
   return messages.slice(-limit).map(({ role, content }) => ({ role, content }))
 }
 
-function friendlyVoiceError(error) {
-  if (error?.name === 'NotAllowedError' || error?.name === 'SecurityError') {
-    return 'Microphone access was denied. Allow microphone access in your browser settings, then try again.'
-  }
-  if (error?.name === 'NotFoundError' || error?.name === 'DevicesNotFoundError') {
-    return 'No microphone was found. Connect a microphone or use text chat.'
-  }
-  if (error?.name === 'NotReadableError' || error?.name === 'TrackStartError') {
-    return 'The microphone is already in use by another app.'
-  }
-  if (error?.name === 'TypeError' || /failed to fetch|networkerror/i.test(error?.message || '')) {
-    return 'The browser could not reach the voice service. Open the Cloudflare Pages local preview (npm run dev:pages), use HTTPS or localhost, and check your network.'
-  }
-  if (error?.name === 'AbortError') return 'The voice connection was cancelled.'
-  return error?.message || 'Voice could not start. Check your connection and try again.'
-}
-
-export default function SparkyCompanion({ profile, path = '/', onNavigate = () => {}, userPosition = null, nearestBlueLight = null, requestLocation = () => {}, locationError = '' }) {
+export default function SparkyCompanion({ profile, path = '/', onNavigate = () => {}, userPosition = null, currentPlace = '', placeStatus = 'idle', nearestBlueLight = null, requestLocation = () => {}, locationError = '' }) {
   const profileId = profile?.id || 'local-profile'
   const isVoicePage = path === '/sparky/voice'
   const isChatPage = path === '/sparky/chat' || path === '/companion'
@@ -67,6 +85,7 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
   const [serviceMessage, setServiceMessage] = useState('Checking Sparky connection…')
   const [voiceState, setVoiceState] = useState('idle')
   const [voiceMessage, setVoiceMessage] = useState('')
+  const [voiceDiagnostics, setVoiceDiagnostics] = useState(createVoiceDiagnostics)
   const [playbackBlocked, setPlaybackBlocked] = useState(false)
   const [voiceCaption, setVoiceCaption] = useState('')
   const [safetyPhraseDraft, setSafetyPhraseDraft] = useState(store.preferences.safetyPhrase)
@@ -76,6 +95,7 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
   const [emergencyTimestamp, setEmergencyTimestamp] = useState(null)
   const [emergencyEventId, setEmergencyEventId] = useState(null)
   const [emergencyMessage, setEmergencyMessage] = useState('')
+  const [pendingLocationQuestion, setPendingLocationQuestion] = useState(null)
   const [pendingContactAction, setPendingContactAction] = useState(null)
   const [contactActionNotice, setContactActionNotice] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -88,7 +108,9 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
   const suggestionAbortRef = useRef(null)
   const completionAbortRef = useRef(null)
   const completionCacheRef = useRef(new Map())
-  const realtimeRef = useRef({ peer: null, channel: null, microphone: null, audio: null, closing: false, closeTimer: null })
+  const realtimeRef = useRef({ peer: null, channel: null, microphone: null, audio: null, closing: false, closeTimer: null, startupTimer: null })
+  const voiceStageRef = useRef('idle')
+  const voiceDiagnosticsRef = useRef(createVoiceDiagnostics())
   const voiceStateRef = useRef(voiceState)
   const voiceCancelledRef = useRef(false)
   const assistantTranscriptRef = useRef('')
@@ -107,6 +129,9 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
   const handledVoiceToolCallsRef = useRef(new Set())
   const voiceConversationIdRef = useRef(null)
   const latestVoiceUserTranscriptRef = useRef('')
+  const pendingVoiceLocationRef = useRef(false)
+  const completedLocationQuestionRef = useRef('')
+  const locationDataRef = useRef({ userPosition, currentPlace, placeStatus, nearestBlueLight, locationError, requestLocation })
   const [launcherDragging, setLauncherDragging] = useState(false)
   const [launcherPosition, setLauncherPosition] = useState(() => {
     try {
@@ -121,6 +146,9 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
 
   useEffect(() => { storeRef.current = store }, [store])
   useEffect(() => { voiceStateRef.current = voiceState }, [voiceState])
+  useEffect(() => {
+    locationDataRef.current = { userPosition, currentPlace, placeStatus, nearestBlueLight, locationError, requestLocation }
+  }, [userPosition, currentPlace, placeStatus, nearestBlueLight, locationError, requestLocation])
 
   useEffect(() => {
     if (!launcherPosition) return undefined
@@ -162,24 +190,88 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
         if (!active) return
         setServiceReady(health.configured === true)
         setServiceMessage(health.configured === true
-          ? 'Connected to Sparky AI'
+          ? 'Sparky API key is set; quota and model access are checked per request.'
           : 'Sparky is waiting for its secure API key')
       })
       .catch(() => {
         if (!active) return
         setServiceReady(false)
-        setServiceMessage('Sparky API is not reachable. For local full-stack use, restart with “npm run dev” and open http://localhost:5173.')
+        setServiceMessage('Sparky API is not reachable. Start the Cloudflare Pages preview with “npm run dev” and open http://localhost:8790.')
       })
     return () => { active = false }
   }, [])
 
-  function updateStore(updater) {
+  const updateStore = useCallback((updater) => {
     setStore(updater)
-  }
+  }, [])
 
   function appendMessage(conversationId, message) {
     updateStore((current) => appendSparkyMessage(current, conversationId, message))
   }
+
+  const replaceMessage = useCallback((conversationId, messageId, content) => {
+    updateStore((current) => ({
+      ...current,
+      conversations: current.conversations.map((conversation) => conversation.id !== conversationId ? conversation : {
+        ...conversation,
+        updatedAt: new Date().toISOString(),
+        messages: conversation.messages.map((message) => message.id === messageId ? { ...message, content } : message),
+      }),
+    }))
+  }, [updateStore])
+
+  const formatCurrentLocationAnswer = useCallback((location = { userPosition, currentPlace, placeStatus, nearestBlueLight, locationError }) => {
+    if (!location.userPosition) {
+      return location.locationError
+        ? `${location.locationError} Allow location access for SafeSpark, then ask me again.`
+        : 'I don’t have a location fix yet. I’ve requested your browser location permission and will answer when it arrives.'
+    }
+    if (!location.currentPlace || location.placeStatus !== 'ready') {
+      return location.placeStatus === 'error'
+        ? 'I have your GPS fix, but the nearby place lookup failed. Tap the location refresh on Home and ask me again.'
+        : 'I’m resolving your nearby place name now. I’ll update this reply as soon as it is ready.'
+    }
+    const facility = location.nearestBlueLight?.facilities?.[0]
+    const distance = location.nearestBlueLight?.distanceMeters
+    const nearest = facility && Number.isFinite(distance)
+      ? ` Nearest Blue Light: ${facility.description || facility.name}, ${distance < 1000 ? `${Math.round(distance)} m` : `${(distance / 1000).toFixed(2)} km`} away in a straight line.`
+      : ''
+    return `You’re near ${location.currentPlace}. This is an approximate place name.${nearest}`
+  }, [userPosition, currentPlace, placeStatus, nearestBlueLight, locationError])
+
+  const sendVoiceLocationReply = useCallback(() => {
+    const location = locationDataRef.current
+    const resolved = location.userPosition && location.currentPlace && location.placeStatus === 'ready'
+    const failed = Boolean(location.locationError) || (location.userPosition && location.placeStatus === 'error')
+    const channel = realtimeRef.current.channel
+    if ((!resolved && !failed) || channel?.readyState !== 'open') return false
+    channel.send(JSON.stringify({ type: 'response.create', response: {
+      instructions: `Answer the user's location question using exactly this verified app result. Do not mention GPS coordinates or add other location claims: ${formatCurrentLocationAnswer(location)}`,
+      tools: [],
+      tool_choice: 'none',
+      output_modalities: ['audio'],
+    } }))
+    pendingVoiceLocationRef.current = false
+    return true
+  }, [formatCurrentLocationAnswer])
+
+  useEffect(() => {
+    if (pendingVoiceLocationRef.current) sendVoiceLocationReply()
+  }, [userPosition, currentPlace, placeStatus, locationError, voiceState, sendVoiceLocationReply])
+
+  useEffect(() => {
+    if (!pendingLocationQuestion || completedLocationQuestionRef.current === pendingLocationQuestion.messageId) return
+    const ready = userPosition && currentPlace && placeStatus === 'ready'
+    const failed = Boolean(locationError) || (userPosition && placeStatus === 'error')
+    if (!ready && !failed) return
+    completedLocationQuestionRef.current = pendingLocationQuestion.messageId
+    const timer = window.setTimeout(() => replaceMessage(
+      pendingLocationQuestion.conversationId,
+      pendingLocationQuestion.messageId,
+      formatCurrentLocationAnswer(),
+    ), 0)
+    return () => window.clearTimeout(timer)
+  }, [pendingLocationQuestion, userPosition, currentPlace, placeStatus, nearestBlueLight, locationError, formatCurrentLocationAnswer, replaceMessage])
 
   function addVoiceTranscript(role, content, dedupeId) {
     if (!content?.trim()) return
@@ -196,9 +288,51 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
     setVoiceState(nextState)
   }
 
+  function updateVoiceDiagnostics(patch = {}) {
+    const peer = realtimeRef.current.peer
+    const channel = realtimeRef.current.channel
+    const microphone = realtimeRef.current.microphone
+    const track = microphone?.getAudioTracks?.()[0]
+    const next = {
+      ...voiceDiagnosticsRef.current,
+      ...(peer ? {
+        peerConnectionState: peer.connectionState,
+        iceConnectionState: peer.iceConnectionState,
+        iceGatheringState: peer.iceGatheringState,
+        signalingState: peer.signalingState,
+      } : {}),
+      ...(channel ? { dataChannelState: channel.readyState } : {}),
+      ...(track ? {
+        microphoneTrackState: track.readyState,
+        microphoneTrackEnabled: track.enabled,
+        microphoneTrackMuted: track.muted,
+      } : {}),
+      ...patch,
+    }
+    voiceDiagnosticsRef.current = next
+    setVoiceDiagnostics(next)
+    return next
+  }
+
+  function failVoice(error, stage = voiceStageRef.current, extras = {}) {
+    voiceCancelledRef.current = true
+    const details = realtimeErrorDetails({ error: {
+      type: error?.name || error?.type || '',
+      code: error?.code || '',
+      status: error?.status,
+      message: error?.message || String(error || 'Voice connection failed.'),
+    } }, stage)
+    const next = updateVoiceDiagnostics({ ...details, ...(stage === 'create_realtime_session' && error?.status ? { sessionHttpStatus: error.status } : {}), ...extras })
+    setVoiceMessage(`${next.errorMessage}${next.errorHttpStatus ? ` (HTTP ${next.errorHttpStatus})` : ''}`)
+    setLiveVoiceState('error')
+    cleanupVoice()
+  }
+
   const cleanupVoice = useCallback(() => {
+    pendingVoiceLocationRef.current = false
     const state = realtimeRef.current
     window.clearTimeout(state.closeTimer)
+    window.clearTimeout(state.startupTimer)
     state.closing = true
     try {
       state.channel?.close()
@@ -282,27 +416,24 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
     appendMessage(conversationId, userMessage)
     if (inputMode === 'text') setDraft('')
 
+    const directNavigation = resolveSparkyNavigationAction(text)
+    if (directNavigation) {
+      appendMessage(conversationId, makeSparkyMessage(conversationId, 'assistant', `Opening ${directNavigation.label}.`, inputMode))
+      runAppAction(directNavigation)
+      setSuggestions([])
+      setErrorMessage('')
+      return
+    }
+
     if (isCurrentLocationRequest(text)) {
-      let reply
-      if (userPosition) {
-        const latitude = userPosition.latitude.toFixed(6)
-        const longitude = userPosition.longitude.toFixed(6)
-        const accuracy = Number.isFinite(userPosition.accuracyMeters) ? ` (GPS accuracy about ±${Math.round(userPosition.accuracyMeters)} m)` : ''
-        const mapUrl = `https://maps.google.com/?q=${latitude},${longitude}`
-        const facility = nearestBlueLight?.facilities?.[0]
-        const facilityName = facility?.description || facility?.name
-        const distance = nearestBlueLight?.distanceMeters
-        const nearby = facilityName && Number.isFinite(distance)
-          ? `\n\nNearest Blue Light Phone: ${facilityName}, ${distance < 1000 ? `${Math.round(distance)} m` : `${(distance / 1000).toFixed(2)} km`} away in a straight line (not walking distance).`
-          : ''
-        reply = `Your current GPS location is **${latitude}, ${longitude}**${accuracy}.${nearby}\n\n[Open these coordinates in Google Maps](${mapUrl}). Your coordinates are handled on this device and are not sent to Sparky's AI.`
+      if (userPosition && currentPlace && placeStatus === 'ready') {
+        appendMessage(conversationId, makeSparkyMessage(conversationId, 'assistant', formatCurrentLocationAnswer(), inputMode))
       } else {
+        const pendingReply = makeSparkyMessage(conversationId, 'assistant', 'Checking your current location…', inputMode)
+        appendMessage(conversationId, pendingReply)
+        setPendingLocationQuestion({ conversationId, messageId: pendingReply.id })
         requestLocation()
-        reply = locationError
-          ? `${locationError} Once location access is allowed, ask “Where am I?” again and I’ll show your current coordinates.`
-          : 'I need your permission to read GPS first. Allow location access in the browser prompt; then ask “Where am I?” again. I will keep the coordinates on this device.'
       }
-      appendMessage(conversationId, makeSparkyMessage(conversationId, 'assistant', reply, inputMode))
       setSuggestions([])
       setErrorMessage('')
       return
@@ -404,7 +535,9 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
       return
     }
     if (event.type === 'error') {
-      setVoiceMessage('Voice connection returned an error. End the session and try again.')
+      const details = realtimeErrorDetails(event, voiceStageRef.current)
+      updateVoiceDiagnostics(details)
+      setVoiceMessage(`${details.errorMessage}${details.errorHttpStatus ? ` (HTTP ${details.errorHttpStatus})` : ''}`)
       setLiveVoiceState('error')
       cleanupVoice()
       return
@@ -412,7 +545,7 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
     if (event.type === 'session.created' || event.type === 'session.updated') {
       return
     }
-    if (event.type === 'conversation.item.created' && pendingHistoryItemsRef.current > 0) {
+    if (['conversation.item.created', 'conversation.item.added', 'conversation.item.done'].includes(event.type) && pendingHistoryItemsRef.current > 0) {
       pendingHistoryItemsRef.current -= 1
       if (pendingHistoryItemsRef.current === 0) {
         realtimeRef.current.microphone?.getAudioTracks().forEach((track) => { track.enabled = !microphoneMutedRef.current })
@@ -452,6 +585,24 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
     if (event.type === 'conversation.item.input_audio_transcription.completed') {
       latestVoiceUserTranscriptRef.current = event.transcript || ''
       addVoiceTranscript('user', event.transcript, event.item_id)
+      const navigationAction = resolveSparkyNavigationAction(event.transcript || '')
+      if (navigationAction) {
+        onNavigate(navigationAction.path)
+        const channel = realtimeRef.current.channel
+        if (channel?.readyState === 'open') channel.send(JSON.stringify({ type: 'response.create', response: {
+          instructions: `The app has opened ${navigationAction.label}. Confirm that briefly, and do not claim to have changed anything else.`,
+          tools: [],
+          tool_choice: 'none',
+          output_modalities: ['audio'],
+        } }))
+      } else if (isCurrentLocationRequest(event.transcript || '')) {
+        const location = locationDataRef.current
+        pendingVoiceLocationRef.current = true
+        if (!location.userPosition || !location.currentPlace || location.placeStatus === 'error') location.requestLocation()
+        if (!sendVoiceLocationReply()) setVoiceMessage('Finding your current place. I will answer as soon as the location is available.')
+      } else if (realtimeRef.current.channel?.readyState === 'open') {
+        realtimeRef.current.channel.send(JSON.stringify({ type: 'response.create' }))
+      }
       if (!emergencyTriggeredRef.current && (storeRef.current.preferences.safetyPhraseEnabled || safetyPhraseTestArmedRef.current) && transcriptMatchesSafetyPhrase(event.transcript || '', storeRef.current.preferences.safetyPhrase)) {
         const isTest = safetyPhraseTestArmedRef.current
         emergencyTriggeredRef.current = true
@@ -485,7 +636,18 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
       setLiveVoiceState('listening')
       return
     }
-    if (event.type === 'response.done') {
+    if (event.type === 'response.failed' || event.type === 'response.done') {
+      const responseError = event.type === 'response.failed'
+        ? event.response?.status_details?.error || event.error
+        : event.response?.status === 'failed' ? event.response?.status_details?.error : null
+      if (responseError) {
+        const details = realtimeErrorDetails({ type: 'response.failed', error: responseError }, voiceStageRef.current)
+        updateVoiceDiagnostics(details)
+        setVoiceMessage(`${details.errorMessage}${details.errorHttpStatus ? ` (HTTP ${details.errorHttpStatus})` : ''}`)
+        setLiveVoiceState('error')
+        cleanupVoice()
+        return
+      }
       const transcript = assistantTranscriptRef.current.trim()
       if (transcript) addVoiceTranscript('assistant', transcript, event.response?.id)
       assistantTranscriptRef.current = ''
@@ -503,21 +665,23 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
     if (channel?.readyState !== 'open') return
     let toolOutput
     if (name === 'get_current_location') {
-      if (!userPosition) {
-        requestLocation()
-        toolOutput = { available: false, message: 'No current GPS fix is available yet. The app has requested permission locally. Ask the user to allow the browser location prompt and try again; do not guess.' }
+      const location = locationDataRef.current
+      if (!location.userPosition) {
+        location.requestLocation()
+        toolOutput = { available: false, message: 'No current location fix is available yet. The app has requested permission locally. Ask the user to allow the browser location prompt and try again; do not guess or provide coordinates.' }
+      } else if (!location.currentPlace || location.placeStatus === 'loading') {
+        if (location.placeStatus === 'error') location.requestLocation()
+        toolOutput = { available: false, resolving: location.placeStatus === 'loading', message: 'GPS is active, but no human-readable nearby place name is available yet. Do not provide coordinates. Explain that the app is resolving the nearby place name, or that lookup failed, and ask the user to try again later.' }
       } else {
-        const facility = nearestBlueLight?.facilities?.[0]
+        const facility = location.nearestBlueLight?.facilities?.[0]
         toolOutput = {
           available: true,
-          latitude: Number(userPosition.latitude.toFixed(6)),
-          longitude: Number(userPosition.longitude.toFixed(6)),
-          accuracy_meters: Number.isFinite(userPosition.accuracyMeters) ? Math.round(userPosition.accuracyMeters) : null,
+          place_name: location.currentPlace,
           nearest_blue_light: facility ? {
             name: facility.description || facility.name || 'Blue Light Phone on the Safety Map',
-            straight_line_distance_meters: Number.isFinite(nearestBlueLight?.distanceMeters) ? Math.round(nearestBlueLight.distanceMeters) : null,
+            straight_line_distance_meters: Number.isFinite(location.nearestBlueLight?.distanceMeters) ? Math.round(location.nearestBlueLight.distanceMeters) : null,
           } : null,
-          note: 'These are permissioned device coordinates for this explicit request. Distance is straight-line, not walking distance.',
+          note: 'Give the user the human-readable approximate place name. Never mention or infer raw GPS coordinates. The Blue Light distance is straight-line, not walking distance.',
         }
       }
     } else if (name === 'navigate_to_safe_spark_screen') {
@@ -536,7 +700,7 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
     channel.send(JSON.stringify({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: callId, output: JSON.stringify(toolOutput) } }))
     channel.send(JSON.stringify({ type: 'response.create' }))
     const status = name === 'get_current_location'
-      ? toolOutput.available ? 'Your current position was provided for this request only.' : 'Location is not available yet. Allow the browser permission and ask again.'
+      ? toolOutput.available ? 'A nearby place name was provided for this request.' : toolOutput.resolving ? 'Finding a nearby place name…' : 'A nearby place name is unavailable right now.'
       : name === 'navigate_to_safe_spark_screen' && toolOutput.opened ? `Opening ${toolOutput.screen}.`
         : name === 'request_emergency_contact_action' && toolOutput.confirmation_required ? `Please confirm the ${toolOutput.action} action for ${toolOutput.contact} on this screen.`
           : toolOutput.matches?.length ? `Several saved contacts matched: ${toolOutput.matches.join(', ')}. Please clarify which person you mean.`
@@ -601,23 +765,38 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
     }
 
     voiceCancelledRef.current = false
+    voiceStageRef.current = 'microphone_permission'
+    const initialDiagnostics = { ...createVoiceDiagnostics(), stage: 'microphone_permission' }
+    voiceDiagnosticsRef.current = initialDiagnostics
+    setVoiceDiagnostics(initialDiagnostics)
+    realtimeRef.current.startupTimer = window.setTimeout(() => {
+      if (['connecting', 'requesting_permission'].includes(voiceStateRef.current)) {
+        failVoice(new Error(`Voice connection timed out during ${voiceStageRef.current}.`), voiceStageRef.current)
+      }
+    }, 45_000)
+    pendingVoiceLocationRef.current = false
     voiceConversationIdRef.current = activeConversation?.id || storeRef.current.activeConversationId
     handledVoiceToolCallsRef.current.clear()
     emergencyTriggeredRef.current = false
     setMicrophoneMuted(false)
     microphoneMutedRef.current = false
     setLiveVoiceState('requesting_permission')
-    setVoiceMessage('')
+    setVoiceMessage('Approve microphone access in the browser prompt. If no prompt appears, allow Microphone for this site in Safari Settings → Websites → Microphone.')
     let microphone
     let peer
     try {
       microphone = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } })
       microphone.getAudioTracks().forEach((track) => { track.enabled = false })
+      realtimeRef.current.microphone = microphone
+      updateVoiceDiagnostics({ stage: 'microphone_ready', microphonePermission: 'granted' })
       if (voiceCancelledRef.current) {
         microphone.getTracks().forEach((track) => track.stop())
         return
       }
+      voiceStageRef.current = 'create_realtime_session'
+      updateVoiceDiagnostics({ stage: voiceStageRef.current })
       const temporary = await createRealtimeClientSecret(asApiMessages(messages, 12), { safetyId: profileId })
+      updateVoiceDiagnostics({ sessionHttpStatus: temporary.http_status || 200 })
       if (voiceCancelledRef.current) {
         microphone.getTracks().forEach((track) => track.stop())
         return
@@ -630,7 +809,14 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
       peer.ontrack = (event) => {
         const stream = event.streams[0] || new MediaStream([event.track])
         audio.srcObject = stream
-        audio.play().then(() => setPlaybackBlocked(false)).catch(() => { setPlaybackBlocked(true); setVoiceMessage('Audio playback is blocked. Tap “Enable voice audio” to hear Sparky.') })
+        audio.play().then(() => {
+          setPlaybackBlocked(false)
+          updateVoiceDiagnostics({ audioPlaybackError: '' })
+        }).catch((error) => {
+          setPlaybackBlocked(true)
+          updateVoiceDiagnostics({ audioPlaybackError: `${error?.name || 'Error'}: ${safeDiagnosticText(error?.message || 'Audio playback failed.')}` })
+          setVoiceMessage('Audio playback is blocked. Tap “Enable voice audio” to hear Sparky.')
+        })
         try {
           const AudioContextClass = window.AudioContext || window.webkitAudioContext
           const context = new AudioContextClass()
@@ -652,50 +838,61 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
             outputAnalyserRef.current.frame = requestAnimationFrame(tick)
           }
           outputAnalyserRef.current = { context, source, analyser, frame: requestAnimationFrame(tick) }
-        } catch { /* Voice remains usable if audio amplitude analysis is unavailable. */ }
+      } catch (error) { updateVoiceDiagnostics({ audioPlaybackError: `Audio analysis: ${safeDiagnosticText(error?.message || 'unavailable')}` }) }
       }
       microphone.getAudioTracks().forEach((track) => peer.addTrack(track, microphone))
       const channel = peer.createDataChannel('oai-events')
+      voiceStageRef.current = 'waiting_for_data_channel'
       channel.onclose = () => {
         if (realtimeRef.current.channel !== channel || realtimeRef.current.closing) return
-        setLiveVoiceState('error')
-        setVoiceMessage('The voice connection closed. Start a new session or use text chat.')
-        cleanupVoice()
+        failVoice(new Error(`Realtime data channel closed unexpectedly (state: ${channel.readyState}).`), 'data_channel')
       }
       channel.onopen = () => {
+        window.clearTimeout(realtimeRef.current.startupTimer)
+        updateVoiceDiagnostics({ stage: 'connected', dataChannelState: channel.readyState })
         const history = asApiMessages(messages, 12)
         pendingHistoryItemsRef.current = history.length
-        setLiveVoiceState(history.length ? 'connecting' : 'listening')
-        setVoiceMessage(history.length ? 'Restoring this conversation…' : 'Listening. Speak naturally; you can interrupt Sparky at any time.')
+        setLiveVoiceState('listening')
+        setVoiceMessage('Listening. Speak naturally; you can interrupt Sparky at any time.')
         for (const message of history) {
           const type = message.role === 'user' ? 'input_text' : 'output_text'
           channel.send(JSON.stringify({ type: 'conversation.item.create', item: { type: 'message', role: message.role, content: [{ type, text: message.content }] } }))
         }
         if (!history.length) microphone.getAudioTracks().forEach((track) => { track.enabled = !microphoneMutedRef.current })
       }
+      channel.onerror = (event) => {
+        failVoice(event?.error || new Error('Realtime data channel reported an error.'), 'data_channel')
+      }
       channel.onmessage = ({ data }) => {
-        try { handleRealtimeEvent(JSON.parse(data)) } catch { /* Ignore malformed event frames. */ }
+        try { handleRealtimeEvent(JSON.parse(data)) }
+        catch (error) { failVoice(error, 'data_channel_event') }
       }
       peer.onconnectionstatechange = () => {
+        updateVoiceDiagnostics({ stage: peer.connectionState === 'connected' ? 'connected' : voiceStageRef.current })
         if (peer.connectionState === 'connected') window.clearTimeout(realtimeRef.current.closeTimer)
         if (peer.connectionState === 'disconnected' && !realtimeRef.current.closing) {
           realtimeRef.current.closeTimer = window.setTimeout(() => {
             if (peer.connectionState !== 'disconnected' || realtimeRef.current.closing) return
-            setLiveVoiceState('error')
-            setVoiceMessage('The voice connection dropped. Check your connection and try again.')
-            cleanupVoice()
+            failVoice(new Error(`Peer connection remained disconnected (ICE ${peer.iceConnectionState}).`), 'peer_connection')
           }, 3_000)
         }
         if (peer.connectionState === 'failed' && !realtimeRef.current.closing) {
-          setLiveVoiceState('error')
-          setVoiceMessage('The voice connection dropped. Check your connection and try again.')
-          cleanupVoice()
+          failVoice(new Error(`Peer connection failed (${peer.connectionState}; ICE ${peer.iceConnectionState}).`), 'peer_connection')
         }
       }
-      realtimeRef.current = { peer, channel, microphone, audio, closing: false, closeTimer: null }
+      peer.oniceconnectionstatechange = () => updateVoiceDiagnostics({ stage: voiceStageRef.current })
+      peer.onicegatheringstatechange = () => updateVoiceDiagnostics({ stage: voiceStageRef.current })
+      peer.onsignalingstatechange = () => updateVoiceDiagnostics({ stage: voiceStageRef.current })
+      peer.onicecandidateerror = (event) => updateVoiceDiagnostics({ errorMessage: safeDiagnosticText(event.errorText || `ICE candidate error ${event.errorCode || ''}`) })
+      realtimeRef.current = { ...realtimeRef.current, peer, channel, microphone, audio, closing: false, closeTimer: realtimeRef.current.closeTimer || null }
       setLiveVoiceState('connecting')
+      voiceStageRef.current = 'create_sdp_offer'
+      updateVoiceDiagnostics({ stage: voiceStageRef.current })
       const offer = await peer.createOffer()
+      updateVoiceDiagnostics({ sdpOfferCreated: Boolean(offer?.sdp) })
       await peer.setLocalDescription(offer)
+      voiceStageRef.current = 'gather_ice_candidates'
+      updateVoiceDiagnostics({ stage: voiceStageRef.current })
       if (peer.iceGatheringState !== 'complete') {
         await new Promise((resolve, reject) => {
           const timeout = window.setTimeout(() => reject(new Error('Voice connection timed out while preparing media.')), 10_000)
@@ -713,6 +910,8 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
       const sdp = peer.localDescription?.sdp
       if (!sdp) throw new Error('The browser did not create a voice connection offer.')
       if (voiceCancelledRef.current) throw new DOMException('Voice connection cancelled.', 'AbortError')
+      voiceStageRef.current = 'send_sdp_offer'
+      updateVoiceDiagnostics({ stage: voiceStageRef.current })
       const answerResponse = await fetch('https://api.openai.com/v1/realtime/calls', {
         method: 'POST',
         headers: {
@@ -723,46 +922,53 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
       })
       if (voiceCancelledRef.current) throw new DOMException('Voice connection cancelled.', 'AbortError')
       if (!answerResponse.ok) {
-        let providerCode = ''
-        try { providerCode = (await answerResponse.json())?.error?.code || '' } catch { /* Do not expose response bodies or credentials in UI. */ }
-        if (answerResponse.status === 401 || answerResponse.status === 403) throw new Error('OpenAI rejected the temporary voice credential. Check the Cloudflare API secret and Realtime model access, then retry.')
-        if (answerResponse.status === 429) throw new Error('OpenAI Realtime is over quota or rate limited. Check project billing and limits.')
-        if (answerResponse.status === 400) throw new Error(`OpenAI rejected the voice session configuration${providerCode ? ` (${providerCode})` : ''}. Check the Realtime model and settings.`)
-        throw new Error(`The voice handshake failed (HTTP ${answerResponse.status}). Check the connection and try again.`)
+        let providerError = {}
+        try {
+          providerError = (await answerResponse.json())?.error || {}
+        } catch { /* Do not expose response bodies or credentials in UI. */ }
+        const error = new Error(providerError.message || `OpenAI rejected the SDP offer (HTTP ${answerResponse.status}).`)
+        error.name = providerError.type || 'RealtimeHttpError'
+        error.code = providerError.code || ''
+        error.status = answerResponse.status
+        throw error
       }
+      updateVoiceDiagnostics({ sdpHttpStatus: answerResponse.status })
+      voiceStageRef.current = 'receive_sdp_answer'
+      updateVoiceDiagnostics({ stage: voiceStageRef.current })
       const answerSdp = await answerResponse.text()
+      updateVoiceDiagnostics({ sdpAnswerReceived: Boolean(answerSdp.trim()) })
+      if (!answerSdp.trim()) throw new Error('The Realtime endpoint returned an empty SDP answer.')
+      voiceStageRef.current = 'apply_sdp_answer'
+      updateVoiceDiagnostics({ stage: voiceStageRef.current })
       await peer.setRemoteDescription({ type: 'answer', sdp: answerSdp })
+      updateVoiceDiagnostics({ sdpAnswerApplied: true })
     } catch (error) {
       microphone?.getTracks().forEach((track) => track.stop())
       if (peer && peer !== realtimeRef.current.peer) peer.close()
-      cleanupVoice()
-      if (!voiceCancelledRef.current || error.name !== 'AbortError') {
-        setLiveVoiceState('error')
-        setVoiceMessage(friendlyVoiceError(error))
-      }
+      if (!voiceCancelledRef.current || error.name !== 'AbortError') failVoice(error, voiceStageRef.current, { microphonePermission: error?.name === 'NotAllowedError' ? 'denied' : voiceDiagnosticsRef.current.microphonePermission })
+      else cleanupVoice()
     }
   }
 
-  function endVoice({ immediate = false } = {}) {
+  function endVoice() {
     voiceCancelledRef.current = true
     const channel = realtimeRef.current.channel
     if (channel?.readyState === 'open') {
       try {
         channel.send(JSON.stringify({ type: 'session.close' }))
-        if (immediate) {
-          cleanupVoice()
-          setVoiceMessage('Voice session ended.')
-          return
-        }
+        setVoiceMessage('Ending voice session…')
         realtimeRef.current.closeTimer = window.setTimeout(() => {
           cleanupVoice()
-          setVoiceMessage('Voice session ended.')
+          setVoiceMessage('Voice session ended. The connection was closed locally after waiting for Realtime.')
         }, 5_000)
-        setVoiceMessage('Ending voice session…')
         return
-      } catch { /* Close local media even if the remote channel has failed. */ }
+      } catch (error) {
+        failVoice(error, 'end_session')
+        return
+      }
     }
     cleanupVoice()
+    setVoiceMessage('Voice session ended.')
   }
 
   function toggleMicrophoneMute() {
@@ -871,7 +1077,7 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
   )
 
   const contacts = loadContacts()
-  const currentCoordinates = userPosition ? `${userPosition.latitude.toFixed(5)}, ${userPosition.longitude.toFixed(5)}` : null
+  const currentLocationMapUrl = userPosition ? `https://maps.google.com/?q=${userPosition.latitude},${userPosition.longitude}` : null
 
   return (
     <>
@@ -929,11 +1135,30 @@ export default function SparkyCompanion({ profile, path = '/', onNavigate = () =
           {voiceCaption && <p className="sparky-voice-caption">{voiceCaption}</p>}
           {voiceMessage && <p className={voiceState === 'error' ? 'sparky-error' : 'sparky-inline-status'} role="status">{voiceMessage}</p>}
           {voiceState === 'idle' || voiceState === 'error' ? <button type="button" className="sparky-voice-button" onClick={startVoice}><Mic size={18} /> Start voice conversation</button> : <div className="sparky-voice-controls"><button type="button" className="sparky-secondary-button" onClick={toggleMicrophoneMute}>{microphoneMuted ? <><Mic size={17} /> Unmute</> : <><MicOff size={17} /> Mute</>}</button><button type="button" className="sparky-voice-button sparky-end-voice-button" onClick={endVoice}><X size={17} /> End voice</button></div>}
-          {playbackBlocked && <button type="button" className="sparky-secondary-button" onClick={() => audioRef.current?.play().then(() => { setPlaybackBlocked(false); setVoiceMessage('Voice audio enabled.') }).catch(() => {})}><Volume2 size={16} /> Enable voice audio</button>}
-          <p className="sparky-privacy-note">Microphone access starts only when you begin voice. Audio is sent to OpenAI Realtime and is not recorded by SafeSpark. GPS stays on this device unless you ask for your current location during voice; then it is shared with Sparky for that answer.</p>
+          {playbackBlocked && <button type="button" className="sparky-secondary-button" onClick={() => audioRef.current?.play().then(() => { setPlaybackBlocked(false); updateVoiceDiagnostics({ audioPlaybackError: '' }); setVoiceMessage('Voice audio enabled.') }).catch((error) => { updateVoiceDiagnostics({ audioPlaybackError: `${error?.name || 'Error'}: ${safeDiagnosticText(error?.message || 'Audio playback failed.')}` }) })}><Volume2 size={16} /> Enable voice audio</button>}
+          {voiceState === 'error' && <details className="sparky-voice-diagnostics">
+            <summary>Connection diagnostics</summary>
+            <dl>
+              <dt>Failed stage</dt><dd>{voiceDiagnostics.stage}</dd>
+              <dt>Session request HTTP</dt><dd>{voiceDiagnostics.sessionHttpStatus ?? 'not received'}</dd>
+              <dt>SDP request HTTP</dt><dd>{voiceDiagnostics.sdpHttpStatus ?? 'not received'}</dd>
+              <dt>Offer created</dt><dd>{String(voiceDiagnostics.sdpOfferCreated)}</dd>
+              <dt>Answer received / applied</dt><dd>{String(voiceDiagnostics.sdpAnswerReceived)} / {String(voiceDiagnostics.sdpAnswerApplied)}</dd>
+              <dt>Peer / ICE / signaling</dt><dd>{voiceDiagnostics.peerConnectionState} / {voiceDiagnostics.iceConnectionState} / {voiceDiagnostics.signalingState}</dd>
+              <dt>Data channel</dt><dd>{voiceDiagnostics.dataChannelState}</dd>
+              <dt>Microphone access / track</dt><dd>{voiceDiagnostics.microphonePermission} / {voiceDiagnostics.microphoneTrackState}{voiceDiagnostics.microphoneTrackState !== 'none' ? ` (enabled ${voiceDiagnostics.microphoneTrackEnabled}, muted ${voiceDiagnostics.microphoneTrackMuted})` : ''}</dd>
+              {voiceDiagnostics.errorEventType && <><dt>Error event</dt><dd>{voiceDiagnostics.errorEventType}</dd></>}
+              {voiceDiagnostics.errorType && <><dt>Error type</dt><dd>{voiceDiagnostics.errorType}</dd></>}
+              {voiceDiagnostics.errorCode && <><dt>Error code</dt><dd>{voiceDiagnostics.errorCode}</dd></>}
+              {voiceDiagnostics.errorHttpStatus && <><dt>Error HTTP</dt><dd>{voiceDiagnostics.errorHttpStatus}</dd></>}
+              {voiceDiagnostics.errorMessage && <><dt>Original error</dt><dd>{voiceDiagnostics.errorMessage}</dd></>}
+              {voiceDiagnostics.audioPlaybackError && <><dt>Audio playback</dt><dd>{voiceDiagnostics.audioPlaybackError}</dd></>}
+            </dl>
+          </details>}
+          <p className="sparky-privacy-note">Microphone access starts only when you begin voice. Audio is sent to OpenAI Realtime and is not recorded by SafeSpark. Exact GPS coordinates stay on this device; OpenStreetMap receives an approximate point to resolve the place name, and Sparky receives only that name and the Blue Light distance.</p>
         </section>}
 
-        {emergencyActive && <section className="sparky-emergency-panel" role="alert" aria-live="assertive"><div className="sparky-emergency-heading"><strong>{emergencyIsTest ? 'Safety phrase test' : 'Safety phrase detected'}</strong><span>{emergencyIsTest ? 'Simulation only' : 'Review before taking action'}</span></div><p>{emergencyIsTest ? 'This is only a local test. No call or message has been sent.' : `Safety event recorded on this device at ${emergencyTimestamp ? new Date(emergencyTimestamp).toLocaleTimeString() : 'now'}. No call or message has been sent.`}</p>{currentCoordinates && <p className="sparky-emergency-location">Your location: {currentCoordinates} <a href={`https://maps.google.com/?q=${userPosition.latitude},${userPosition.longitude}`} target="_blank" rel="noreferrer">Open map</a></p>}{!emergencyIsTest && <div className="sparky-emergency-actions"><a href="tel:911" onClick={() => emergencyEventId && updateSafetyEventStatus(profileId, emergencyEventId, 'dialer_opened_unconfirmed')}>Call 911</a>{contacts.map((contact) => <button type="button" key={contact.id} onClick={() => openSmsComposer(contact)}>Text {contact.name}</button>)}</div>}{emergencyMessage && <p role="status">{emergencyMessage}</p>}<button className="sparky-dismiss-emergency" type="button" onClick={() => { if (window.confirm('Dismiss the local safety alert? No alert has been sent.')) { emergencyTriggeredRef.current = true; setEmergencyActive(false) } }}>Dismiss local alert</button></section>}
+        {emergencyActive && <section className="sparky-emergency-panel" role="alert" aria-live="assertive"><div className="sparky-emergency-heading"><strong>{emergencyIsTest ? 'Safety phrase test' : 'Safety phrase detected'}</strong><span>{emergencyIsTest ? 'Simulation only' : 'Review before taking action'}</span></div><p>{emergencyIsTest ? 'This is only a local test. No call or message has been sent.' : `Safety event recorded on this device at ${emergencyTimestamp ? new Date(emergencyTimestamp).toLocaleTimeString() : 'now'}. No call or message has been sent.`}</p>{currentLocationMapUrl && <p className="sparky-emergency-location">Your location: {currentPlace || 'Finding nearby place name…'} <a href={currentLocationMapUrl} target="_blank" rel="noreferrer">Open map</a></p>}{!emergencyIsTest && <div className="sparky-emergency-actions"><a href="tel:911" onClick={() => emergencyEventId && updateSafetyEventStatus(profileId, emergencyEventId, 'dialer_opened_unconfirmed')}>Call 911</a>{contacts.map((contact) => <button type="button" key={contact.id} onClick={() => openSmsComposer(contact)}>Text {contact.name}</button>)}</div>}{emergencyMessage && <p role="status">{emergencyMessage}</p>}<button className="sparky-dismiss-emergency" type="button" onClick={() => { if (window.confirm('Dismiss the local safety alert? No alert has been sent.')) { emergencyTriggeredRef.current = true; setEmergencyActive(false) } }}>Dismiss local alert</button></section>}
         {pendingContactAction && <section className="sparky-contact-confirmation" aria-labelledby="sparky-contact-action-title">
           <div><p className="section-kicker">CONFIRM ON YOUR DEVICE</p><h2 id="sparky-contact-action-title">{pendingContactAction.action === 'call' ? `Call ${pendingContactAction.contact.name}?` : `Text ${pendingContactAction.contact.name}?`}</h2><p className="sparky-contact-phone">{pendingContactAction.contact.phone}</p>{pendingContactAction.action === 'text' && <blockquote>{pendingContactAction.message}</blockquote>}<p className="sparky-privacy-note">SafeSpark will open your phone or messaging app. {pendingContactAction.action === 'text' ? 'Review and send the message there; delivery is not confirmed here.' : 'You must complete the call there.'}</p>{contactActionNotice && <p className="sparky-inline-status" role="status">{contactActionNotice}</p>}</div>
           <div className="sparky-contact-confirm-actions">{pendingContactAction.action === 'call' ? <a href={`tel:${pendingContactAction.contact.phone}`} onClick={launchContactAction}><Phone size={16} aria-hidden="true" /> Open phone</a> : <><a href={`sms:${pendingContactAction.contact.phone}?body=${encodeURIComponent(pendingContactAction.message)}`} onClick={launchContactAction}><Send size={16} aria-hidden="true" /> Open Messages</a><button type="button" onClick={copyContactMessage}>Copy message</button></>}<button type="button" onClick={() => { setPendingContactAction(null); setContactActionNotice(''); setVoiceMessage(pendingContactAction.handedOff ? 'Contact action handed off to your device; delivery is unconfirmed.' : 'Contact action cancelled.') }}>{pendingContactAction.handedOff ? 'Done' : 'Cancel'}</button></div>

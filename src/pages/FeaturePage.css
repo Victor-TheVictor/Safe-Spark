@@ -24,3 +24,4 @@
 @media (max-width: 430px) {
   .app-bottom-nav .app-nav-mascot { width: 24px; height: 24px; }
 }
+.contact-message-editor,.emergency-message-composer{display:grid;gap:9px;margin-top:12px;padding:12px;border:1px solid #f1d1bb;border-radius:12px;background:#fff8f2}.contact-message-editor label,.emergency-message-composer label{display:grid;gap:6px;margin:0;font-size:13px;font-weight:700}.contact-message-editor textarea,.emergency-message-composer textarea{width:100%;resize:vertical;padding:11px;border:1px solid #d9cabc;border-radius:9px;background:white;font:inherit;font-weight:400;line-height:1.45}.contact-message-editor small,.emergency-message-composer p{margin:0;color:#6e625a;font-size:12px;line-height:1.45}.contact-message-editor>div,.emergency-message-composer>div{display:flex;flex-wrap:wrap;gap:8px}.emergency-message-composer .prepare-help-link{background:#d64d00!important;color:white!important}

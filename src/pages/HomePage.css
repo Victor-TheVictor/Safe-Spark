@@ -215,8 +215,15 @@
 
 .feature-icon-orange { background: #fff0e4; color: #b94208; }
 .feature-icon-blue { background: #eaf4fa; color: #175f91; }
+.feature-icon-mascot { background: #fff0e4; }
 .feature-icon-plum { background: #f4edf2; color: #78536d; }
 .feature-icon-green { background: #eaf3eb; color: #396a44; }
+
+.feature-mascot {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+}
 
 .feature-card-copy {
   min-width: 0;
@@ -252,6 +259,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   border: 1px solid #efdfd0;
   border-radius: 23px;
   background: #fff3e9;
@@ -275,13 +283,14 @@
 
 .sos-button {
   position: relative;
-  width: 132px;
-  height: 132px;
-  flex: 0 0 132px;
+  width: 100%;
+  min-height: 88px;
+  height: auto;
+  flex: 1 1 auto;
   display: grid;
   place-items: center;
-  border: 7px solid #fff;
-  border-radius: 50%;
+  border: 4px solid #fff;
+  border-radius: 16px;
   background: #c92724;
   color: #fff;
   box-shadow: 0 0 0 2px #e8b2a8, 0 8px 18px rgba(154, 34, 29, 0.19);
@@ -302,15 +311,15 @@
 
 .sos-button:active,
 .sos-button.is-holding {
-  transform: scale(0.96);
+  transform: scale(0.985);
   background: #a91d1c;
 }
 
 .sos-button.is-holding::after {
   position: absolute;
-  inset: -8px;
+  inset: -5px;
   border: 3px solid rgba(166, 32, 28, 0.5);
-  border-radius: 50%;
+  border-radius: inherit;
   content: '';
   animation: sos-hold-ring 1.4s linear forwards;
 }
@@ -321,7 +330,7 @@
 }
 
 .sos-instruction {
-  margin: 13px 0 0;
+  margin: 4px 0 0;
   color: #654d43;
   font-size: 14px;
   font-weight: 650;
@@ -329,7 +338,7 @@
 
 .sos-feedback {
   min-height: 18px;
-  margin: 5px 0 0;
+  margin: 0;
   color: #74443a;
   font-size: 12px;
   line-height: 1.5;
@@ -407,6 +416,104 @@
   border-radius: 0;
   background: transparent;
 }
+
+.current-location-card {
+  flex: 0 0 auto;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--home-line);
+  background: #fffaf5;
+}
+
+.current-location-heading,
+.current-location-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.current-location-heading h3 {
+  margin: 0;
+  color: var(--home-ink);
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.current-place-name {
+  margin: 5px 0 2px;
+  color: var(--home-ink);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.current-place-name.is-pending,
+.current-location-empty {
+  color: var(--home-muted);
+  font-weight: 500;
+}
+
+.current-coordinates {
+  margin: 0;
+  color: #3c312a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.current-location-meta,
+.current-location-disclosure {
+  margin: 3px 0 0;
+  color: #6e625a;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.current-location-actions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin-top: 5px;
+}
+
+.current-location-action {
+  min-width: 44px;
+  min-height: 38px;
+  padding: 0 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid #e8d6c7;
+  border-radius: 9px;
+  background: #fffdf9;
+  color: #713719;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.current-location-action:hover { background: #fff0e4; }
+.current-location-action:disabled { opacity: 0.55; cursor: wait; }
+.current-location-status { margin: 3px 0 0; color: #8a3920; font-size: 10px; line-height: 1.35; }
+.current-location-link { color: #713719; text-underline-offset: 2px; }
+
+/* Current place is the user's most important status at a glance. */
+.current-location-heading h3 {
+  color: #c94d08;
+  font-size: 16px;
+  font-weight: 800;
+}
+.current-place-name {
+  color: #c94d08;
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+.current-place-name.is-pending { color: #8c654f; }
 
 .nearest-heading-row {
   align-items: center;
@@ -666,7 +773,7 @@
   .feature-card-description { max-width: 250px; font-size: 14px; }
   .feature-icon { width: 48px; height: 48px; flex-basis: 48px; }
   .sos-section { min-height: 280px; }
-  .sos-button { width: 148px; height: 148px; flex-basis: 148px; font-size: 32px; }
+  .sos-button { width: 100%; min-height: 112px; height: auto; flex: 1 1 auto; border-radius: 18px; font-size: 32px; }
   .map-preview { height: 340px; }
   .home-section-title { font-size: 27px; }
   .nearest-section { padding: 24px; }
@@ -755,13 +862,15 @@
   }
   .sos-section .home-section-title { margin-bottom: 6px; font-size: 15px; }
   .sos-button {
-    width: clamp(68px, 10svh, 86px);
-    height: clamp(68px, 10svh, 86px);
-    flex-basis: clamp(68px, 10svh, 86px);
-    border-width: 5px;
-    font-size: 23px;
+    width: 100%;
+    min-height: 56px;
+    height: auto;
+    flex: 1 1 auto;
+    border-width: 3px;
+    border-radius: 14px;
+    font-size: 22px;
   }
-  .sos-instruction { margin-top: 4px; font-size: 11px; }
+  .sos-instruction { margin-top: 1px; font-size: 10px; }
   .sos-feedback { min-height: 10px; margin-top: 0; font-size: 9px; line-height: 1.2; }
 
   .blue-light-section {
@@ -780,6 +889,15 @@
     flex-direction: column;
     border-radius: 16px;
   }
+  .current-location-card { padding: 6px 9px; }
+  .current-location-heading h3 { font-size: 12px; }
+  .current-place-name { margin-top: 3px; font-size: 11px; line-height: 1.25; }
+  .current-coordinates { font-size: 10px; }
+  .current-location-meta,
+  .current-location-disclosure,
+  .current-location-status { font-size: 9px; }
+  .current-location-actions { gap: 6px; margin-top: 3px; }
+  .current-location-action { min-height: 44px; padding-inline: 8px; font-size: 10px; }
   .map-preview {
     flex: 1 1 auto;
     min-height: clamp(90px, 14svh, 210px);
@@ -838,13 +956,23 @@
   .feature-card-title { font-size: 10px; }
   .sos-section { min-height: 100px; padding-block: 4px; }
   .sos-section .home-section-title { margin-bottom: 3px; font-size: 12px; }
-  .sos-button { width: 58px; height: 58px; flex-basis: 58px; font-size: 19px; }
+  .sos-button { width: 100%; min-height: 50px; height: auto; flex: 1 1 auto; font-size: 18px; }
   .sos-instruction { margin-top: 2px; font-size: 9px; }
   .sos-feedback { min-height: 8px; font-size: 8px; }
   .map-section-heading { margin-bottom: 3px; }
   .map-section-heading .home-section-title { font-size: 16px; }
   .map-open-link { min-height: 28px; font-size: 10px; }
-  .map-preview { min-height: 80px; }
+  .map-preview { min-height: 52px; }
+  .current-location-card { padding: 4px 8px; }
+  .current-location-heading .section-kicker { display: none; }
+  .current-location-heading h3 { font-size: 11px; }
+  .current-place-name { margin: 1px 0; font-size: 10px; }
+  .current-coordinates { font-size: 9px; }
+  .current-location-meta,
+  .current-location-disclosure,
+  .current-location-status { margin-top: 1px; font-size: 8px; line-height: 1.2; }
+  .current-location-actions { gap: 4px; margin-top: 2px; }
+  .current-location-action { min-height: 44px; padding-inline: 6px; font-size: 9px; }
   .nearest-section { padding: 4px 8px; }
   .nearest-heading-row { margin-bottom: 2px; }
   .nearest-heading-row .home-section-title { font-size: 13px; }
@@ -861,17 +989,57 @@
 }
 
 @media (max-width: 699px) and (min-height: 601px) and (max-height: 720px) {
-  .map-preview { min-height: 76px; }
-  .feature-card { min-height: 66px; padding-block: 3px; }
-  .feature-icon { width: 36px; height: 36px; flex-basis: 36px; }
-  .feature-icon svg { width: 21px; height: 21px; }
-  .feature-card-title { font-size: 10px; }
-  .sos-section { min-height: 110px; padding-block: 5px; }
-  .sos-section .home-section-title { margin-bottom: 4px; font-size: 13px; }
-  .sos-button { width: 64px; height: 64px; flex-basis: 64px; font-size: 21px; }
-  .sos-instruction { margin-top: 3px; font-size: 10px; }
-  .sos-feedback { min-height: 8px; font-size: 8px; }
+  .home-page { padding-top: calc(3px + env(safe-area-inset-top)); padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
+  .home-header { min-height: 44px; flex-basis: 44px; margin-bottom: 2px; }
+  .home-brand-logo { width: 52px; flex-basis: 52px; }
+  .home-tagline { font-size: 16px; }
+  .home-heading-copy .home-greeting { margin-top: 1px; font-size: 9px; }
+  .avatar-button { width: 30px; height: 30px; }
+  .home-content { gap: 5px; }
+  .feature-card { min-height: 52px; padding-block: 2px; }
+  .feature-icon { width: 29px; height: 29px; flex-basis: 29px; border-radius: 8px; }
+  .feature-icon svg { width: 19px; height: 19px; }
+  .feature-mascot { width: 28px; height: 28px; }
+  .feature-card-title { font-size: 9px; }
+  .sos-section { min-height: 82px; padding: 4px 8px; }
+  .sos-section .home-section-title { margin-bottom: 2px; font-size: 12px; }
+  .sos-button { width: 100%; min-height: 48px; height: auto; flex: 1 1 auto; font-size: 18px; }
+  .sos-instruction { margin-top: 1px; font-size: 9px; }
+  .sos-feedback { min-height: 7px; font-size: 7px; }
+  .map-section-heading { margin-bottom: 2px; }
+  .map-section-heading .section-kicker { display: none; }
+  .map-section-heading .home-section-title { font-size: 15px; }
+  .map-open-link { min-height: 28px; font-size: 10px; }
+  .blue-light-panel { border-radius: 12px; }
+  .current-location-card { padding: 4px 8px; }
+  .current-location-heading .section-kicker { display: none; }
+  .current-location-heading h3 { font-size: 11px; }
+  .current-place-name { margin: 1px 0; font-size: 10px; }
+  .current-coordinates { font-size: 9px; }
+  .current-location-meta,
+  .current-location-disclosure,
+  .current-location-status { margin-top: 1px; font-size: 8px; line-height: 1.2; }
+  .current-location-actions { gap: 4px; margin-top: 2px; }
+  .current-location-action { min-height: 44px; padding-inline: 6px; font-size: 9px; }
+  .map-preview { min-height: 52px; }
+  .nearest-section { padding: 4px 7px; }
+  .nearest-heading-row { margin-bottom: 1px; }
+  .nearest-heading-row .home-section-title { font-size: 12px; }
+  .nearest-heading-row .location-refresh { width: 26px; height: 26px; }
+  .nearest-result-topline { min-height: 20px; padding-inline: 6px; }
+  .nearest-distance { font-size: 12px; }
+  .nearest-facilities { padding-inline: 6px; }
+  .nearest-facility { padding-block: 1px; }
+  .nearest-facility h3 { font-size: 10px; }
+  .nearest-result-footer { min-height: 18px; padding: 1px 6px; gap: 2px; font-size: 7px; }
+  .nearest-actions { gap: 1px; }
+  .nearest-map-button { min-height: 18px; padding-inline: 2px; gap: 1px; font-size: 8px; }
 }
 
 .nearest-directions-link,.map-directions-link{min-height:36px;padding:0 9px;display:inline-flex;align-items:center;justify-content:center;gap:5px;border:1px solid #c94c0a;border-radius:9px;background:#d64d00;color:#fff;text-decoration:none;font-size:12px;font-weight:750;white-space:nowrap}.nearest-directions-link:hover,.map-directions-link:hover{background:#b94305}.nearest-directions-link:focus-visible,.map-directions-link:focus-visible{outline:3px solid #d64d00;outline-offset:3px}.map-directions-panel{margin:12px 0;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:14px;border:1px solid #e9ddd1;border-radius:12px;background:#fffdf9}.map-directions-panel>div{min-width:0;display:grid;gap:3px}.map-directions-panel strong{font-size:13px}.map-directions-panel span{overflow:hidden;color:#675a50;font-size:12px;text-overflow:ellipsis;white-space:nowrap}.map-directions-link{min-height:44px;padding-inline:14px}@media(max-width:430px){.nearest-directions-link{min-height:44px;padding-inline:9px;font-size:11px}.map-directions-panel{margin:8px 0;padding:9px 10px;gap:8px}}
 .sos-action-panel{position:relative;z-index:5;width:min(100%,420px);margin:12px auto 0;padding:18px;display:grid;gap:10px;border:1px solid #edc4b2;border-radius:16px;background:#fffdf9;text-align:left;box-shadow:0 10px 30px #42211124}.sos-action-panel h2{margin:0;font-size:18px}.sos-action-panel p{margin:0;color:#675a50;font-size:13px;line-height:1.45}.sos-action-panel small{color:#675a50;line-height:1.45}.sos-panel-close{position:absolute;top:7px;right:8px;width:38px;height:38px;border:0;border-radius:50%;background:transparent;color:#60371f;font-size:25px;cursor:pointer}.sos-panel-call,.sos-panel-text{min-height:48px;padding:0 13px;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:10px;text-decoration:none;font-weight:750}.sos-panel-call{background:#bf291f;color:#fff}.sos-panel-text{border:1px solid #d64d00;background:#fff;color:#783816}.sos-panel-call:focus-visible,.sos-panel-text:focus-visible,.sos-panel-close:focus-visible{outline:3px solid #d64d00;outline-offset:3px}
+
+@media (max-width: 1100px) {
+  .current-location-heading h3 { font-size: 16px; }
+  .current-place-name { font-size: 17px; }
+}

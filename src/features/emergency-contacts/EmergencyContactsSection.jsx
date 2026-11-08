@@ -26,11 +26,15 @@ export default function EmergencyContactsSection({ onNavigate }) {
   const [editingId, setEditingId] = useState('')
   const [editName, setEditName] = useState('')
   const [editPhone, setEditPhone] = useState('')
+  const [messageEditorId, setMessageEditorId] = useState('')
+  const [messageDraft, setMessageDraft] = useState('')
+  const [emergencyDraft, setEmergencyDraft] = useState('')
+  const [emergencyComposerOpen, setEmergencyComposerOpen] = useState(false)
   const [eta, setEta] = useState('20')
   const [walk, setWalk] = useState(readWalk)
   const [now, setNow] = useState(0)
   const [notice, setNotice] = useState('')
-  const { userPosition } = useLocationTracking()
+  const { userPosition, currentPlace, placeStatus, requestLocation } = useLocationTracking()
   const primary = useMemo(() => contacts.find((contact) => contact.id === primaryId), [contacts, primaryId])
 
   function commitContacts(next) {
@@ -105,9 +109,34 @@ export default function EmergencyContactsSection({ onNavigate }) {
     return `sms:${phoneForAction(contact.phone)}?body=${encodeURIComponent(message)}`
   }
 
-  const locationText = userPosition
-    ? `My current location: https://maps.google.com/?q=${userPosition.latitude},${userPosition.longitude}`
-    : 'My current location is unavailable. Please call me.'
+  function beginMessageEdit(contact) {
+    setMessageEditorId(contact.id)
+    setMessageDraft(contact.smsMessage || `Hi ${contact.name}, checking in with you from SafeSpark.`)
+  }
+
+  function saveMessageTemplate(event, contact) {
+    event.preventDefault()
+    const message = messageDraft.trim()
+    if (!message) {
+      setNotice('Enter a message before saving it.')
+      return
+    }
+    commitContacts(contacts.map((item) => item.id === contact.id ? { ...item, smsMessage: message } : item))
+    setMessageEditorId('')
+    setNotice(`Text template saved for ${contact.name}.`)
+  }
+
+  function openEmergencyComposer() {
+    if (!userPosition) requestLocation()
+    const place = currentPlace && placeStatus === 'ready' ? currentPlace : ''
+    const locationSentence = place
+      ? `My current location is near ${place}.`
+      : 'My location is not included in this text. Please call me.'
+    setEmergencyDraft(`I need help. ${locationSentence}`)
+    setEmergencyComposerOpen(true)
+  }
+
+  const savedTemplate = (contact) => contact.smsMessage || `Hi ${contact.name}, checking in with you from SafeSpark.`
   const secondsLeft = walk?.status === 'active' ? Math.ceil((walk.endAt - now) / 1000) : 0
 
   return (
@@ -136,10 +165,16 @@ export default function EmergencyContactsSection({ onNavigate }) {
               <label className="contact-primary-choice"><input type="radio" name="primary-contact" checked={primaryId === contact.id} onChange={() => { setPrimaryId(contact.id); savePrimaryContactId(contact.id) }} /><span><strong>{contact.name}</strong><small>{contact.phone}{primaryId === contact.id ? ' · Primary' : ''}</small></span></label>
               <div className="contact-actions">
                 <a href={`tel:${phoneForAction(contact.phone)}`}><Phone size={15} aria-hidden="true" /> Call</a>
-                <a href={createSmsLink(contact, `Hi ${contact.name}, checking in with you from SafeSpark.`)}><MessageCircle size={15} aria-hidden="true" /> Text</a>
+                <a href={createSmsLink(contact, savedTemplate(contact))}><MessageCircle size={15} aria-hidden="true" /> Text</a>
+                <button type="button" onClick={() => beginMessageEdit(contact)}>Edit text</button>
                 <button type="button" onClick={() => startEdit(contact)}>Edit</button>
                 <button type="button" onClick={() => { if (window.confirm(`Remove ${contact.name} from your Safety Circle?`)) commitContacts(contacts.filter((item) => item.id !== contact.id)) }}>Remove</button>
               </div>
+              {messageEditorId === contact.id && <form className="contact-message-editor" onSubmit={(event) => saveMessageTemplate(event, contact)}>
+                <label>Saved text for {contact.name}<textarea value={messageDraft} onChange={(event) => setMessageDraft(event.target.value)} maxLength={500} rows={3} required /></label>
+                <small>{messageDraft.length}/500 · You can review or change it again in Messages before sending.</small>
+                <div><button type="submit">Save text</button><button type="button" onClick={() => setMessageEditorId('')}>Cancel</button></div>
+              </form>}
             </>
           )}
         </article>
@@ -149,9 +184,15 @@ export default function EmergencyContactsSection({ onNavigate }) {
         <h2 id="emergency-options-title">Emergency options</h2>
         <a className="feature-primary emergency-call-link" href="tel:911"><Phone size={17} aria-hidden="true" /> Call 911</a>
         {primary ? (
-          <a className="prepare-help-link" href={createSmsLink(primary, `I need help. ${locationText}`)}>
-            <MessageCircle size={17} aria-hidden="true" /> Open text to {primary.name}
-          </a>
+          <>
+            <button className="prepare-help-link" type="button" onClick={openEmergencyComposer}><MessageCircle size={17} aria-hidden="true" /> Prepare help text to {primary.name}</button>
+            {emergencyComposerOpen && <div className="emergency-message-composer">
+              <label>Message to {primary.name}<textarea value={emergencyDraft} onChange={(event) => setEmergencyDraft(event.target.value)} maxLength={500} rows={4} /></label>
+              <p>{currentPlace && placeStatus === 'ready' ? `Location included: ${currentPlace}` : 'Nearby place name is not available yet; edit the message to add a landmark or address you recognize.'}</p>
+              {currentPlace && placeStatus === 'ready' && !emergencyDraft.includes(currentPlace) && <button type="button" onClick={() => setEmergencyDraft((message) => `${message.trim()} My current location is near ${currentPlace}.`.trim())}>Add current place to text</button>}
+              <div><a className="prepare-help-link" href={emergencyDraft.trim() ? createSmsLink(primary, emergencyDraft.trim()) : undefined} onClick={(event) => { if (!emergencyDraft.trim()) event.preventDefault(); else setEmergencyComposerOpen(false) }}><MessageCircle size={16} aria-hidden="true" /> Open in Messages</a><button type="button" onClick={() => setEmergencyComposerOpen(false)}>Cancel</button></div>
+            </div>}
+          </>
         ) : <p>Add a trusted contact to prepare a help text.</p>}
         <p className="feature-note">Calls and texts open your phone app. Review and send the message yourself; SafeSpark does not contact emergency services or your contacts in the background.</p>
       </section>

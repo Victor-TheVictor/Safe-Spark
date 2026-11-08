@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ExternalLink, RefreshCw } from 'lucide-react'
 
 const DATA_URL = 'https://data.bloomington.in.gov/resource/t5xf-ggw6.json'
@@ -15,6 +15,8 @@ export default function BloomingtonCalls() {
   const [error, setError] = useState('')
   const [refreshedAt, setRefreshedAt] = useState(null)
   const [attempt, setAttempt] = useState(0)
+  const lastRefreshRequestedAt = useRef(0)
+  const newestCallAt = calls[0]?.datetime
 
   useEffect(() => {
     const controller = new AbortController()
@@ -27,7 +29,7 @@ export default function BloomingtonCalls() {
           '$order': 'datetime DESC',
           '$limit': '12',
         })
-        const response = await fetch(`${DATA_URL}?${params.toString()}`, { signal: controller.signal })
+        const response = await fetch(`${DATA_URL}?${params.toString()}`, { signal: controller.signal, cache: 'no-store' })
         if (!response.ok) throw new Error(`City data returned ${response.status}`)
         const data = await response.json()
         if (!Array.isArray(data)) throw new Error('Unexpected city data format')
@@ -43,13 +45,29 @@ export default function BloomingtonCalls() {
     return () => controller.abort()
   }, [attempt])
 
+  useEffect(() => {
+    const refreshIfVisible = () => {
+      if (document.visibilityState !== 'visible' || Date.now() - lastRefreshRequestedAt.current < 5_000) return
+      lastRefreshRequestedAt.current = Date.now()
+      setAttempt((value) => value + 1)
+    }
+    const interval = window.setInterval(refreshIfVisible, 60_000)
+    window.addEventListener('focus', refreshIfVisible)
+    document.addEventListener('visibilitychange', refreshIfVisible)
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener('focus', refreshIfVisible)
+      document.removeEventListener('visibilitychange', refreshIfVisible)
+    }
+  }, [])
+
   return (
     <section className="bloomington-calls" aria-labelledby="bloomington-calls-title">
       <div className="crime-source-heading">
-        <div><p className="section-kicker">City of Bloomington · live public dataset</p><h2 id="bloomington-calls-title">Calls for Service</h2></div>
+        <div><p className="section-kicker">City of Bloomington · police public dataset</p><h2 id="bloomington-calls-title">Calls for Service</h2></div>
         <button type="button" onClick={() => setAttempt((value) => value + 1)} disabled={loading} aria-label="Refresh Bloomington calls"><RefreshCw size={16} aria-hidden="true" /> Refresh</button>
       </div>
-      <p className="feature-note">Police calls for service include non-crime activity and are not verified crime reports. City records are kept separate from IU campus reports. The live feed includes only call type, time, agency, district, and report status; it omits personal details and street addresses.</p>
+      <p className="feature-note">Police calls for service include non-crime activity and are not verified crime reports. City records are kept separate from IU campus reports. The feed refreshes every minute while this page is open; new items appear after Bloomington publishes them. It shows call type, time, agency, district, and report status, not personal details or street addresses.</p>
       {loading && <p role="status">Loading the latest city records…</p>}
       {error && <div className="city-feed-error" role="status"><p>{error}</p><a href={SOURCE_URL} target="_blank" rel="noopener noreferrer">Open Bloomington Open Data <ExternalLink size={14} aria-hidden="true" /></a></div>}
       {!loading && !error && calls.length === 0 && <p>No recent city calls were returned by the feed.</p>}
@@ -59,7 +77,7 @@ export default function BloomingtonCalls() {
           <small>{call.agency || 'Agency not listed'}{call.district ? ` · District ${call.district}` : ''} · {call.report || 'Report status unavailable'}</small>
         </article>
       ))}
-      <div className="city-feed-footer"><span>{refreshedAt ? `Retrieved ${refreshedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : 'Source: City of Bloomington Police Department'}</span><a href={SOURCE_URL} target="_blank" rel="noopener noreferrer">Source data <ExternalLink size={13} aria-hidden="true" /></a></div>
+      <div className="city-feed-footer"><span>{refreshedAt ? `Feed checked ${refreshedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}${newestCallAt ? ` · newest record ${formatDate(newestCallAt)}` : ''}` : 'Source: City of Bloomington Police Department'}</span><a href={SOURCE_URL} target="_blank" rel="noopener noreferrer">Source data <ExternalLink size={13} aria-hidden="true" /></a></div>
     </section>
   )
 }

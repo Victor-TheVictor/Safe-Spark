@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-`npm run dev` builds the app and starts Cloudflare Pages locally at `http://localhost:5173`, including Sparky's `/api/sparky/*` functions. Browser geolocation and microphone access work on localhost. This local Pages command does not hot-reload; use `npm run dev:vite` for frontend-only Vite work (Sparky AI APIs will be unavailable), or `npm run dev:pages` for the same full-stack preview on port 8790. On a phone, deploy to HTTPS before requesting location or microphone access.
+`npm run dev` builds the app and starts Cloudflare Pages locally at `http://localhost:8790`, including Sparky's `/api/sparky/*` functions. Browser geolocation and microphone access work on localhost after browser permission is granted. This local Pages command does not hot-reload; use `npm run dev:vite` for frontend-only Vite work (Sparky AI APIs will be unavailable), or `npm run dev:pages` for the same full-stack preview on port 8790. On a phone, deploy to HTTPS before requesting location or microphone access.
 
 ## Useful commands
 
@@ -38,8 +38,9 @@ Vercel is configured to serve the Vite entry point for app routes through `verce
 ## Data and map protection
 
 - Blue Light Phone coordinates are the verified baseline. Do not change `public/emergencyPhones.geojson`, `public/emergencyPhones.json`, or files under `src/components/safety-map/` and `src/components/safety-map/data/` without explicit approval.
+- The app keeps exact GPS in local device state; it sends an approximate point to OpenStreetMap Nominatim to resolve a nearby place name on first location fix and after meaningful movement. Results are throttled and OpenStreetMap contributors are attributed in the location card.
 - The IU Crime & Fire Log data file is a dated snapshot. The page links to the official IUPD log for the current publication range; refresh the local snapshot before a public release.
-- Bloomington Calls for Service are fetched from the City of Bloomington Socrata API at page load. These are police calls, including non-crime activity, and are displayed separately from IU campus crime reports. If the live API is unavailable, the page links to the city source.
+- Bloomington Calls for Service are fetched from the City of Bloomington Socrata API at page load and refreshed every minute while the page is visible. These are police calls, including non-crime activity, and are displayed separately from IU campus crime reports. The feed can only show new calls after the city publishes them. If the live API is unavailable, the page links to the city source.
 - Gear photos and product facts come from manufacturer or product pages. Price and inventory are intentionally not cached.
 
 ## MVP capability boundaries

@@ -110,11 +110,43 @@ async function parseOpenAiJson(response) {
   return response.ok ? payload : null
 }
 
-function providerFailure(status) {
+function providerFailure(status, providerCode = '') {
   if (status === 401 || status === 403) return json({ error: 'The server API key was rejected or this project cannot access the selected model. Check the Cloudflare secret and OpenAI project permissions.' }, 502)
-  if (status === 429) return json({ error: 'The OpenAI project is rate limited or out of available API quota. Check its usage and billing, then retry.' }, 502)
+  if (status === 429) {
+    const quotaError = /quota|credit|spend_limit|usage_limit/i.test(providerCode)
+    return json({ error: quotaError
+      ? 'OpenAI reports an exhausted API balance or usage limit. Check the API project’s Usage, Billing, and Limits before retrying.'
+      : 'OpenAI rate limited the request. Wait briefly and retry; if it continues, check the API project’s model rate limits.' }, 502)
+  }
   if (status === 400) return json({ error: 'OpenAI rejected the Realtime session configuration. Check the configured model and voice settings.' }, 502)
   return json({ error: 'Sparky could not connect right now. Please try again shortly.' }, 502)
+}
+
+function safeRealtimeDiagnostic(value) {
+  if (typeof value !== 'string') return ''
+  return value
+    .replace(/Bearer\s+[^\s,;]+/gi, 'Bearer [redacted]')
+    .replace(/\b(?:sk|ek|sess|eph)_[A-Za-z0-9_-]{8,}\b/g, '[redacted]')
+    .replace(/(client_secret|api_key|authorization)["'\s:=]+[^\s,;"']+/gi, '$1=[redacted]')
+    .slice(0, 500)
+}
+
+function realtimeProviderFailure(status, providerError = {}) {
+  const code = safeRealtimeDiagnostic(providerError.code || providerError.type || '')
+  const message = safeRealtimeDiagnostic(providerError.message || '')
+  const generic = status === 429
+    ? /quota|credit|spend_limit|usage_limit/i.test(code)
+      ? 'OpenAI reports an exhausted API balance or usage limit. Check the API project’s Usage, Billing, and Limits before retrying.'
+      : 'OpenAI rate limited the request. Wait briefly and retry; if it continues, check the API project’s model rate limits.'
+    : status === 401 || status === 403
+      ? 'The server API key was rejected or this project cannot access the selected model. Check the Cloudflare secret and OpenAI project permissions.'
+      : status === 400
+        ? 'OpenAI rejected the Realtime session configuration. Check the configured model and voice settings.'
+        : 'Sparky could not connect right now. Please try again shortly.'
+  return json({
+    error: message || generic,
+    diagnostics: { stage: 'create_realtime_session', httpStatus: status || null, errorType: safeRealtimeDiagnostic(providerError.type || ''), errorCode: code, errorMessage: message },
+  }, 502)
 }
 
 export async function handleHealth({ env }) {
@@ -314,13 +346,13 @@ export async function handleRealtimeSession(context) {
         session: {
           type: 'realtime',
           model: env.OPENAI_REALTIME_MODEL || 'gpt-realtime-2.1',
-          instructions: `${knowledgeInstructions(latestUserQuery)}\n\nUse get_current_location only after the user explicitly asks for their current location, coordinates, or nearest Blue Light Phone. The browser executes this tool locally and returns location only for that request. Never infer or fabricate a location.`,
+          instructions: `${knowledgeInstructions(latestUserQuery)}\n\nUse get_current_location only after the user explicitly asks where they are or asks for the nearest Blue Light Phone. The browser returns only a human-readable nearby place name and nearest Blue Light details. Never request, reveal, or invent raw GPS coordinates; never infer or fabricate a location.`,
           tools: SPARKY_VOICE_TOOLS,
           tool_choice: 'auto',
           audio: {
             input: {
               transcription: { model: 'gpt-realtime-whisper', language: 'en' },
-              turn_detection: { type: 'server_vad', create_response: true, interrupt_response: true },
+              turn_detection: { type: 'server_vad', create_response: false, interrupt_response: true },
               noise_reduction: { type: 'near_field' },
             },
             output: { voice: env.SPARKY_VOICE || 'marin' },
@@ -329,23 +361,29 @@ export async function handleRealtimeSession(context) {
       }),
     })
     if (!response.ok) {
-      let diagnostic = {}
+      let providerError = {}
       try {
-        const error = await response.clone().json()
-        diagnostic = { code: error?.error?.code, param: error?.error?.param }
+        providerError = (await response.clone().json())?.error || {}
       } catch { /* Keep provider details out of the client response. */ }
-      console.warn('Sparky Realtime configuration rejected by provider', { status: response.status, ...diagnostic })
-      return providerFailure(response.status)
+      console.warn('Sparky Realtime configuration rejected by provider', { status: response.status, code: safeRealtimeDiagnostic(providerError.code || providerError.type || '') })
+      return realtimeProviderFailure(response.status, providerError)
     }
     const payload = await parseOpenAiJson(response)
     const clientSecret = payload?.value || payload?.client_secret?.value
-    if (!clientSecret) return providerFailure()
+    if (!clientSecret) return json({
+      error: 'OpenAI created no temporary Realtime credential in its response.',
+      diagnostics: { stage: 'create_realtime_session', httpStatus: response.status, errorType: 'MissingClientSecret', errorCode: '', errorMessage: 'The provider response did not include the expected temporary credential.' },
+    }, 502)
     return json({
       client_secret: clientSecret,
       expires_at: payload.expires_at || payload.client_secret?.expires_at || null,
       model: payload.session?.model || env.OPENAI_REALTIME_MODEL || 'gpt-realtime-2.1',
     })
-  } catch {
-    return providerFailure()
+  } catch (error) {
+    const message = safeRealtimeDiagnostic(error?.message || 'The Realtime client-secret request failed before receiving a response.')
+    return json({
+      error: message,
+      diagnostics: { stage: 'create_realtime_session', httpStatus: null, errorType: safeRealtimeDiagnostic(error?.name || 'NetworkError'), errorCode: '', errorMessage: message },
+    }, 502)
   }
 }
